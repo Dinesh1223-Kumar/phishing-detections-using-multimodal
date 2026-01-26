@@ -1,13 +1,36 @@
-from flask import Flask
+from flask import Flask, render_template, request
+import joblib
+import pandas as pd
 from features.url_features import extract_url_features
 
 app = Flask(__name__)
 
-@app.route("/")
+# Load trained model once when app starts
+model = joblib.load("models/url_model.pkl")
+
+FEATURE_ORDER = [
+    'url_length',
+    'count_dots',
+    'count_hyphen',
+    'has_at_symbol',
+    'has_https',
+    'has_login_word',
+    'subdomain_count',
+    'is_ip_address'
+]
+
+@app.route("/", methods=["GET", "POST"])
 def home():
-    test_url = "http://example-login-secure.com"
-    features = extract_url_features(test_url)
-    return str(features)
+    result = None
+    url = ""
+    if request.method == "POST":
+        url = request.form["url_input"]
+        features = extract_url_features(url)
+        feature_vector = pd.DataFrame([[features[f] for f in FEATURE_ORDER]],
+                                      columns=FEATURE_ORDER)
+        prediction = model.predict(feature_vector)[0]
+        result = "Phishing" if prediction == 1 else "Legitimate"
+    return render_template("index.html", result=result, url=url)
 
 if __name__ == "__main__":
     app.run(debug=True)
