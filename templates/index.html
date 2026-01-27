@@ -3,150 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phishing URL Detector</title>
+    <title>Phishing Website Detector</title>
     <style>
-        /* ===== Body & Layout ===== */
         body {
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: #fff;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f6f8;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            overflow: hidden;
+            color: #333;
         }
 
         .container {
-            background: rgba(0, 0, 0, 0.85);
-            padding: 40px 50px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            animation: fadeIn 1s ease-in-out;
+            background: #ffffff;
+            padding: 40px;
+            width: 420px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
 
         h1 {
-            font-size: 2.2rem;
-            margin-bottom: 30px;
-            color: #ffdd59;
-            text-shadow: 1px 1px 8px rgba(0,0,0,0.6);
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #555;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 15px 20px;
-            border-radius: 50px;
-            border: none;
-            margin-bottom: 20px;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
             font-size: 1rem;
-            outline: none;
-            transition: all 0.3s ease;
         }
 
         input[type="text"]:focus {
-            box-shadow: 0 0 10px #ff4757;
+            outline: none;
+            border-color: #2563eb;
         }
 
-        input[type="submit"] {
-            padding: 15px 45px;
-            font-size: 1.1rem;
-            border-radius: 50px;
-            border: none;
-            cursor: pointer;
-            background: #ff4757;
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #2563eb;
             color: #fff;
-            transition: all 0.3s ease;
-            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
         }
 
-        input[type="submit"]:hover {
-            background: #ff6b81;
-            transform: scale(1.05);
+        button:hover {
+            background: #1e40af;
         }
 
         .result {
-            margin-top: 25px;
-            font-size: 1.3rem;
+            margin-top: 20px;
             padding: 15px;
-            border-radius: 12px;
+            text-align: center;
             font-weight: bold;
-            transition: all 0.3s ease;
-            opacity: 0;
+            border-radius: 6px;
         }
 
         .legit {
-            background: #2ed573;
-            color: #000;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #34d399;
         }
 
         .phishing {
-            background: #ff4757;
-            color: #fff;
-        }
-
-        /* Small devices */
-        @media(max-width: 600px) {
-            .container {
-                padding: 30px 20px;
-            }
-            h1 {
-                font-size: 1.8rem;
-            }
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #f87171;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Phishing URL Detector</h1>
-        <form id="urlForm">
-            <input type="text" name="url_input" id="url_input" placeholder="Enter URL here..." required>
-            <input type="submit" value="Check URL">
+        <h1>Phishing Website Detector</h1>
+        <p class="subtitle">Enter a website URL to check if it is safe or phishing.</p>
+
+        <form method="POST">
+            <input type="text" name="url_input" placeholder="https://example.com" required>
+            <button type="submit">Check Website</button>
         </form>
 
-        <div id="resultBox" class="result"></div>
+        {% if result %}
+            <div class="result {{ 'phishing' if result=='Phishing' else 'legit' }}">
+                Result: {{ result }}
+            </div>
+        {% endif %}
     </div>
-
-    <script>
-        const form = document.getElementById("urlForm");
-        const urlInput = document.getElementById("url_input");
-        const resultBox = document.getElementById("resultBox");
-
-        // Basic URL validation
-        function isValidURL(url) {
-            const pattern = /^(https?:\/\/)?([\w\d\-_]+\.)+[\w]{2,}(\/[\w\d\-._~:/?#[\]@!$&'()*+,;=]*)?$/;
-            return pattern.test(url);
-        }
-
-        form.addEventListener("submit", function(e) {
-            e.preventDefault(); // Prevent page reload
-
-            const url = urlInput.value.trim();
-            if(!isValidURL(url)) {
-                alert("Please enter a valid URL!");
-                return;
-            }
-
-            // Simulated Phishing check (replace this with your backend API call)
-            let result = "Legit";
-            if(url.includes("phish") || url.includes("login") || url.includes("verify")) {
-                result = "Phishing";
-            }
-
-            // Display result instantly
-            resultBox.textContent = `URL: ${url} \nResult: ${result}`;
-            resultBox.className = `result ${result === "Phishing" ? "phishing" : "legit"}`;
-            resultBox.style.opacity = 1;
-        });
-    </script>
 </body>
 </html>
