@@ -1,12 +1,19 @@
 from flask import Flask, render_template, request
 import joblib
 import pandas as pd
+import os
+
 from features.url_features import extract_url_features
 
-app = Flask(__name__)
+# ---------------- PATH SETUP ----------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "url_model.pkl")
 
-# Load trained model once when app starts
-model = joblib.load("models/url_model.pkl")
+# Load trained model ONCE
+model = joblib.load(MODEL_PATH)
+
+# ---------------- FLASK APP ----------------
+app = Flask(__name__)
 
 FEATURE_ORDER = [
     'url_length',
@@ -23,13 +30,20 @@ FEATURE_ORDER = [
 def home():
     result = None
     url = ""
+
     if request.method == "POST":
         url = request.form["url_input"]
+
         features = extract_url_features(url)
-        feature_vector = pd.DataFrame([[features[f] for f in FEATURE_ORDER]],
-                                      columns=FEATURE_ORDER)
+
+        feature_vector = pd.DataFrame(
+            [[features[f] for f in FEATURE_ORDER]],
+            columns=FEATURE_ORDER
+        )
+
         prediction = model.predict(feature_vector)[0]
         result = "Phishing" if prediction == 1 else "Legitimate"
+
     return render_template("index.html", result=result, url=url)
 
 if __name__ == "__main__":
