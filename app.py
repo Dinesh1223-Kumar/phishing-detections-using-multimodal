@@ -1,103 +1,86 @@
 from flask import Flask, render_template, request
 import joblib
-import numpy as np
-import requests
-import re
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 
-# ==============================
-# Flask App
-# ==============================
+from features.url_features import extract_url_features
+from features.html_features import extract_html_features
+from features.network_features import extract_network_features
+from features.text_extractor import extract_visible_text
+from features.text_preprocessing import clean_text
+
 app = Flask(__name__)
 
 # ==============================
-# Load Models ONCE
+# Load models ONCE
 # ==============================
 url_model = joblib.load("models/url_model.pkl")
 html_model = joblib.load("models/html_model.pkl")
+network_model = joblib.load("models/network_model.pkl")
 text_model = joblib.load("models/text_model.pkl")
 text_vectorizer = joblib.load("models/text_vectorizer.pkl")
 
-URL_FEATURES = list(url_model.feature_names_in_)
-HTML_FEATURES = list(html_model.feature_names_in_)
+# ==============================
+# Feature orders (MATCH TRAINING)
+# ==============================
+URL_FEATURE_ORDER = [
+    'url_length',
+    'count_dots',
+    'count_hyphen',
+    'has_at_symbol',
+    'has_https',
+    'has_login_word',
+    'subdomain_count',
+    'is_ip_address'
+]
+
+HTML_FEATURE_ORDER = [
+    'form_count',
+    'password_input_count',
+    'iframe_count',
+    'external_link_count',
+    'has_suspicious_words',
+    'html_length'
+]
+
+NETWORK_FEATURE_ORDER = [
+    'domain_length',
+    'num_subdomains',
+    'has_ip_address',
+    'dns_resolves',
+    'uses_https'
+]
 
 # ==============================
-# URL Feature Extraction
+# Fusion prediction
 # ==============================
-def extract_url_features(url):
-    parsed = urlparse(url)
-    features = {
-        "url_length": len(url),
-        "num_dots": url.count("."),
-        "has_https": int(parsed.scheme == "https"),
-        "num_slashes": url.count("/"),
-        "num_hyphens": url.count("-"),
-        "has_ip": int(bool(re.search(r"\d+\.\d+\.\d+\.\d+", url))),
-        "query_length": len(parsed.query),
-        "path_length": len(parsed.path),
-    }
+def predict_phishing(url, html_content=""):
+    votes = []
 
-    return [features.get(f, 0) for f in URL_FEATURES]
+    # -------- URL MODEL --------
+    url_features = extract_url_features(url)
+    url_vector = [[url_features[f] for f in URL_FEATURE_ORDER]]
+    votes.append(url_model.predict(url_vector)[0])
 
-# ==============================
-# HTML Feature Extraction
-# ==============================
-def extract_html_features(soup):
-    features = {
-        "num_forms": len(soup.find_all("form")),
-        "num_links": len(soup.find_all("a")),
-        "num_inputs": len(soup.find_all("input")),
-        "num_iframes": len(soup.find_all("iframe")),
-        "has_password": int(bool(soup.find("input", {"type": "password"}))),
-        "title_length": len(soup.title.text) if soup.title else 0,
-    }
+    # -------- HTML MODEL --------
+    if html_content:
+        html_features = extract_html_features(html_content)
+        html_vector = [[html_features[f] for f in HTML_FEATURE_ORDER]]
+        votes.append(html_model.predict(html_vector)[0])
 
-    return [features.get(f, 0) for f in HTML_FEATURES]
+    # -------- NETWORK MODEL --------
+    net_features = extract_network_features(url)
+    net_vector = [[net_features[f] for f in NETWORK_FEATURE_ORDER]]
+    votes.append(network_model.predict(net_vector)[0])
 
-# ==============================
-# NLP Text Extraction
-# ==============================
-def extract_visible_text(soup):
-    for tag in soup(["script", "style", "noscript"]):
-        tag.decompose()
+    # -------- NLP MODEL --------
+    if html_content:
+        text = extract_visible_text(html_content)
+        cleaned = clean_text(text)
+        text_vec = text_vectorizer.transform([cleaned])
+        votes.append(text_model.predict(text_vec)[0])
 
-    text = soup.get_text(separator=" ")
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-# ==============================
-# Fusion Prediction
-# ==============================
-def predict_phishing(url):
-    try:
-        response = requests.get(url, timeout=6)
-        soup = BeautifulSoup(response.text, "html.parser")
-    except Exception:
-        return "Phishing", 95.0
-
-    # --- URL ---
-    url_vector = extract_url_features(url)
-    url_prob = url_model.predict_proba([url_vector])[0][1]
-
-    # --- HTML ---
-    html_vector = extract_html_features(soup)
-    html_prob = html_model.predict_proba([html_vector])[0][1]
-
-    # --- NLP ---
-    page_text = extract_visible_text(soup)
-    text_vec = text_vectorizer.transform([page_text])
-    text_prob = text_model.predict_proba(text_vec)[0][1]
-
-    # --- Fusion ---
-    final_score = (
-        0.3 * url_prob +
-        0.3 * html_prob +
-        0.4 * text_prob
-    )
-
-    label = "Phishing" if final_score >= 0.5 else "Legitimate"
-    return label, round(final_score * 100, 2)
+    # -------- FINAL DECISION (Majority vote)
+    final_prediction = 1 if sum(votes) >= 2 else 0
+    return final_prediction
 
 # ==============================
 # Routes
@@ -105,20 +88,18 @@ def predict_phishing(url):
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
-    confidence = None
+    error = None
 
     if request.method == "POST":
-        url = request.form.get("url_input")
-        result, confidence = predict_phishing(url)
+        url = request.form.get("url", "").strip()
+        html = request.form.get("html", "")
 
-    return render_template(
-        "index.html",
-        result=result,
-        confidence=confidence
-    )
+        if not url:
+            error = "Please enter a valid URL"
+        else:
+            result = predict_phishing(url, html)
 
-# ==============================
-# Run App
-# ==============================
+    return render_template("index.html", result=result, error=error)
+
 if __name__ == "__main__":
     app.run(debug=True)

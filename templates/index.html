@@ -2,107 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phishing Website Detector</title>
+    <title>Phishing Website Detection</title>
     <style>
         body {
-            margin: 0;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: #f4f6f8;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            color: #333;
         }
 
-        .container {
-            background: #ffffff;
-            padding: 40px;
-            width: 420px;
+        .card {
+            background: #020617;
+            padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 400px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        h1 {
-            text-align: center;
-            color: #1f2937;
-            margin-bottom: 10px;
-        }
-
-        p.subtitle {
-            text-align: center;
-            color: #555;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-        }
-
-        input[type="text"] {
+        input {
             width: 100%;
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-bottom: 15px;
-            font-size: 1rem;
-        }
-
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #2563eb;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: none;
         }
 
         button {
+            margin-top: 15px;
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             background: #2563eb;
-            color: #fff;
+            color: white;
             border: none;
-            border-radius: 6px;
-            font-size: 1rem;
+            border-radius: 5px;
             cursor: pointer;
-            font-weight: 600;
         }
 
-        button:hover {
-            background: #1e40af;
-        }
-
-        .result {
-            margin-top: 20px;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-            border-radius: 6px;
-        }
-
-        .legit {
-            background: #ecfdf5;
-            color: #065f46;
-            border: 1px solid #34d399;
-        }
-
-        .phishing {
-            background: #fef2f2;
-            color: #991b1b;
-            border: 1px solid #f87171;
-        }
+        .phishing { color: #ef4444; }
+        .legit { color: #22c55e; }
+        .error { color: #facc15; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Phishing Website Detector</h1>
-        <p class="subtitle">Enter a website URL to check if it is safe or phishing.</p>
 
-        <form method="POST">
-            <input type="text" name="url_input" placeholder="https://example.com" required>
-            <button type="submit">Check Website</button>
-        </form>
+<div class="card">
+    <h2>Phishing Website Detection</h2>
 
-        {% if result %}
-            <div class="result {{ 'phishing' if result=='Phishing' else 'legit' }}">
-                Result: {{ result }}
-            </div>
+    <form method="POST">
+        <input type="text" name="url" placeholder="Enter website URL" required>
+        <button type="submit">Analyze</button>
+    </form>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if result is not none %}
+        {% if result == 1 %}
+            <h3 class="phishing">⚠️ Phishing Website Detected</h3>
+        {% else %}
+            <h3 class="legit">✅ Legitimate Website</h3>
         {% endif %}
-    </div>
+    {% endif %}
+</div>
+
 </body>
 </html>
