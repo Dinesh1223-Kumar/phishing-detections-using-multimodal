@@ -1,73 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Phishing Website Detection</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        .card {
-            background: #020617;
-            padding: 30px;
-            border-radius: 10px;
-            width: 400px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
-            border: none;
-        }
-
-        button {
-            margin-top: 15px;
-            width: 100%;
-            padding: 10px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .phishing { color: #ef4444; }
-        .legit { color: #22c55e; }
-        .error { color: #facc15; }
-    </style>
+<meta charset="UTF-8">
+<title>AI Phishing Detection Dashboard</title>
+<style>
+* { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+body { margin: 0; background: radial-gradient(circle at top, #0f172a, #020617); color: #e5e7eb; }
+.dashboard { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+.sidebar { background: #020617; padding: 20px; border-right: 1px solid #1e293b; }
+.sidebar a { display: block; padding: 12px; margin-bottom: 10px; text-decoration: none; color: #94a3b8; border-radius: 6px; }
+.sidebar a.active, .sidebar a:hover { background: #1e293b; color: #22c55e; }
+.main { padding: 25px; overflow-y: auto; }
+.header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+.stat { background: #020617; padding: 15px; border-radius: 10px; border: 1px solid #1e293b; }
+.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+.card { background: #020617; padding: 20px; border-radius: 12px; border: 1px solid #1e293b; }
+.scan-box input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #1e293b; background: #020617; color: white; }
+.scan-box button { margin-top: 12px; padding: 10px; width: 100%; background: #2563eb; border: none; border-radius: 6px; color: white; cursor: pointer; }
+.result.phishing { border-left: 6px solid #ef4444; }
+.result.legit { border-left: 6px solid #22c55e; }
+.risk-HIGH { color: #ef4444; }
+.risk-MEDIUM { color: #facc15; }
+.risk-LOW { color: #22c55e; }
+.reason { color: #94a3b8; margin-top: 6px; }
+.error { color: #f87171; margin-top: 10px; font-weight: bold; }
+</style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Phishing Website Detection</h2>
+<div class="dashboard">
 
-    <form method="POST">
-        <input type="text" name="url" placeholder="Enter website URL" required>
-        <button type="submit">Analyze</button>
-    </form>
+    <div class="sidebar">
+        <h2>🛡 PhshPay</h2>
+        <a class="active">Dashboard</a>
+        <a>Scan URL</a>
+        <a>Reports</a>
+        <a>Threat Intel</a>
+        <a>Settings</a>
+    </div>
 
-    {% if error %}
-        <p class="error">{{ error }}</p>
-    {% endif %}
+    <div class="main">
 
-    {% if result is not none %}
-        {% if result == 1 %}
-            <h3 class="phishing">⚠️ Phishing Website Detected</h3>
-        {% else %}
-            <h3 class="legit">✅ Legitimate Website</h3>
-        {% endif %}
-    {% endif %}
+        <div class="header">
+            <h1>AI-Powered Phishing Detection</h1>
+            <span>Welcome, Lucifer</span>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="stats">
+            <div class="stat"><span>Total Scans</span><h3>{{ stats.total }}</h3></div>
+            <div class="stat"><span>Phishing</span><h3>{{ stats.phishing }}</h3></div>
+            <div class="stat"><span>Safe</span><h3>{{ stats.legit }}</h3></div>
+            <div class="stat"><span>Suspicious</span><h3>{{ stats.suspicious }}</h3></div>
+        </div>
+
+        <div class="grid">
+
+            <!-- LEFT -->
+            <div>
+                <div class="card scan-box">
+                    <h3>Scan URL</h3>
+                    <form method="POST">
+                        <input name="url" placeholder="https://example-login.com" required>
+                        <button>Scan</button>
+                    </form>
+                    {% if error %}
+                        <div class="error">{{ error }}</div>
+                    {% endif %}
+                </div>
+
+                {% if result %}
+                <div class="card result {{ 'phishing' if result['final_label'] == 'Phishing' else 'legit' }}" style="margin-top:20px;">
+                    <h2>{{ '🚨 PHISHING DETECTED' if result['final_label'] == 'Phishing' else '✅ LEGITIMATE WEBSITE' }}</h2>
+                    <p>Risk Level: <b class="risk-{{ result['risk_level'] }}">{{ result['risk_level'] }}</b></p>
+                    <p>Phishing Probability: <b>{{ result['probability'] }}%</b></p>
+                    <h4>Reasons</h4>
+                    {% for reason in result['reasons'] %}
+                        <div class="reason">• {{ reason }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- RIGHT -->
+            <div>
+                <div class="card">
+                    <h3>Model Confidence</h3>
+                    {% if result %}
+                        {% for model, score in result['model_scores'].items() %}
+                            <div class="reason">{{ model }} → {{ (score * 100) | round(1) }}%</div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="reason">No scan yet</p>
+                    {% endif %}
+                </div>
+
+                <div class="card" style="margin-top:20px;">
+                    <h3>Phishing Probability Distribution</h3>
+                    <canvas id="statsChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('statsChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: ['Phishing', 'Legitimate', 'Suspicious'],
+        datasets: [{
+            data: [
+                {{ result.probability if result else 0 }},
+                {{ 100 - result.probability if result else 100 }},
+                0
+            ],
+            backgroundColor: [
+                '{{ "#ef4444" if result and result.final_label == "Phishing" else "#22c55e" }}',
+                '#22c55e',
+                '#facc15'
+            ]
+        }]
+    },
+    options: { responsive: true }
+});
+</script>
+
 
 </body>
 </html>
