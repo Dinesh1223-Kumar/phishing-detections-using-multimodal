@@ -2,134 +2,329 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AI Phishing Detection Dashboard</title>
+<title>AI Phishing Detection</title>
+
 <style>
-* { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
-body { margin: 0; background: radial-gradient(circle at top, #0f172a, #020617); color: #e5e7eb; }
-.dashboard { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
-.sidebar { background: #020617; padding: 20px; border-right: 1px solid #1e293b; }
-.sidebar a { display: block; padding: 12px; margin-bottom: 10px; text-decoration: none; color: #94a3b8; border-radius: 6px; }
-.sidebar a.active, .sidebar a:hover { background: #1e293b; color: #22c55e; }
-.main { padding: 25px; overflow-y: auto; }
-.header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
-.stat { background: #020617; padding: 15px; border-radius: 10px; border: 1px solid #1e293b; }
-.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-.card { background: #020617; padding: 20px; border-radius: 12px; border: 1px solid #1e293b; }
-.scan-box input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #1e293b; background: #020617; color: white; }
-.scan-box button { margin-top: 12px; padding: 10px; width: 100%; background: #2563eb; border: none; border-radius: 6px; color: white; cursor: pointer; }
-.result.phishing { border-left: 6px solid #ef4444; }
-.result.legit { border-left: 6px solid #22c55e; }
-.risk-HIGH { color: #ef4444; }
-.risk-MEDIUM { color: #facc15; }
-.risk-LOW { color: #22c55e; }
-.reason { color: #94a3b8; margin-top: 6px; }
-.error { color: #f87171; margin-top: 10px; font-weight: bold; }
+* {
+    box-sizing: border-box;
+    font-family: Inter, Segoe UI, sans-serif;
+}
+
+body {
+    margin: 0;
+    background: radial-gradient(circle at top, #0f172a, #020617);
+    color: #e5e7eb;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    background: #020617;
+    padding: 18px;
+    border-right: 1px solid #1e293b;
+}
+.sidebar a {
+    display: block;
+    padding: 10px;
+    margin-bottom: 8px;
+    color: #94a3b8;
+    text-decoration: none;
+    border-radius: 6px;
+}
+.sidebar a.active,
+.sidebar a:hover {
+    background: #1e293b;
+    color: #22c55e;
+}
+
+/* Main */
+.main {
+    padding: 18px 22px;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+/* Stats */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.stat {
+    background: #020617;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #1e293b;
+}
+
+/* Content */
+.content {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 16px;
+}
+
+.card {
+    background: #020617;
+    border-radius: 12px;
+    border: 1px solid #1e293b;
+    padding: 16px;
+    box-shadow: inset 0 0 0 1px #1e293b;
+}
+
+/* Scan */
+.scan-box input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    background: #020617;
+    color: white;
+    border: 1px solid #1e293b;
+}
+.scan-box button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    border-radius: 8px;
+    border: none;
+    color: white;
+}
+
+/* Result */
+.result.phishing { border-left: 5px solid #ef4444; }
+.result.legitimate { border-left: 5px solid #22c55e; }
+.result.suspicious { border-left: 5px solid #facc15; }
+
+/* Recent Scans */
+.recent-scans {
+    max-height: 200px;
+    overflow-y: auto;
+}
+.recent-scans::-webkit-scrollbar {
+    width: 6px;
+}
+.recent-scans::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 10px;
+}
+.url-cell {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #93c5fd;
+}
+
+/* Analysis */
+.analysis-item {
+    margin-bottom: 14px;
+}
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+.progress {
+    height: 8px;
+    background: #020617;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #3b82f6);
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+th {
+    text-align: left;
+    padding-bottom: 8px;
+    color: #94a3b8;
+}
+td {
+    padding: 8px 6px;
+}
+.result-cell.phishing { color: #ef4444; }
+.result-cell.legitimate { color: #22c55e; }
+.result-cell.suspicious { color: #facc15; }
+.time-cell {
+    white-space: nowrap;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* Domain Intelligence */
+.domain-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.domain-item {
+    background: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+}
+.domain-item span {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+/* View All */
+.view-all {
+    text-align: right;
+    margin-top: 6px;
+}
+.view-all a {
+    color: #60a5fa;
+    font-size: 12px;
+    text-decoration: none;
+}
 </style>
 </head>
+
 <body>
 
 <div class="dashboard">
 
-    <div class="sidebar">
-        <h2>🛡 PhshPay</h2>
-        <a class="active">Dashboard</a>
-        <a>Scan URL</a>
-        <a>Reports</a>
-        <a>Threat Intel</a>
-        <a>Settings</a>
-    </div>
-
-    <div class="main">
-
-        <div class="header">
-            <h1>AI-Powered Phishing Detection</h1>
-            <span>Welcome, Lucifer</span>
-        </div>
-
-        <!-- Dashboard Stats -->
-        <div class="stats">
-            <div class="stat"><span>Total Scans</span><h3>{{ stats.total }}</h3></div>
-            <div class="stat"><span>Phishing</span><h3>{{ stats.phishing }}</h3></div>
-            <div class="stat"><span>Safe</span><h3>{{ stats.legit }}</h3></div>
-            <div class="stat"><span>Suspicious</span><h3>{{ stats.suspicious }}</h3></div>
-        </div>
-
-        <div class="grid">
-
-            <!-- LEFT -->
-            <div>
-                <div class="card scan-box">
-                    <h3>Scan URL</h3>
-                    <form method="POST">
-                        <input name="url" placeholder="https://example-login.com" required>
-                        <button>Scan</button>
-                    </form>
-                    {% if error %}
-                        <div class="error">{{ error }}</div>
-                    {% endif %}
-                </div>
-
-                {% if result %}
-                <div class="card result {{ 'phishing' if result['final_label'] == 'Phishing' else 'legit' }}" style="margin-top:20px;">
-                    <h2>{{ '🚨 PHISHING DETECTED' if result['final_label'] == 'Phishing' else '✅ LEGITIMATE WEBSITE' }}</h2>
-                    <p>Risk Level: <b class="risk-{{ result['risk_level'] }}">{{ result['risk_level'] }}</b></p>
-                    <p>Phishing Probability: <b>{{ result['probability'] }}%</b></p>
-                    <h4>Reasons</h4>
-                    {% for reason in result['reasons'] %}
-                        <div class="reason">• {{ reason }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- RIGHT -->
-            <div>
-                <div class="card">
-                    <h3>Model Confidence</h3>
-                    {% if result %}
-                        {% for model, score in result['model_scores'].items() %}
-                            <div class="reason">{{ model }} → {{ (score * 100) | round(1) }}%</div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="reason">No scan yet</p>
-                    {% endif %}
-                </div>
-
-                <div class="card" style="margin-top:20px;">
-                    <h3>Phishing Probability Distribution</h3>
-                    <canvas id="statsChart"></canvas>
-                </div>
-            </div>
-
-        </div>
-    </div>
+<div class="sidebar">
+    <h3>🛡 PhshPay</h3>
+    <a class="active">Dashboard</a>
+    <a>Reports</a>
+    <a>Settings</a>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const ctx = document.getElementById('statsChart').getContext('2d');
-const chart = new Chart(ctx, {
-    type: 'pie',
-    data: {
-        labels: ['Phishing', 'Legitimate', 'Suspicious'],
-        datasets: [{
-            data: [
-                {{ result.probability if result else 0 }},
-                {{ 100 - result.probability if result else 100 }},
-                0
-            ],
-            backgroundColor: [
-                '{{ "#ef4444" if result and result.final_label == "Phishing" else "#22c55e" }}',
-                '#22c55e',
-                '#facc15'
-            ]
-        }]
-    },
-    options: { responsive: true }
-});
-</script>
+<div class="main">
 
+<div class="header">
+    <h2>AI Phishing Detection</h2>
+    <span>Welcome, Lucifer</span>
+</div>
+
+<div class="stats">
+    <div class="stat">Total<br><b>{{ stats.total }}</b></div>
+    <div class="stat">Phishing<br><b>{{ stats.phishing }}</b></div>
+    <div class="stat">Legit<br><b>{{ stats.legit }}</b></div>
+    <div class="stat">Suspicious<br><b>{{ stats.suspicious }}</b></div>
+</div>
+
+<div class="content">
+
+<!-- LEFT COLUMN -->
+<div>
+
+<div class="card scan-box">
+<form method="POST">
+    <input name="url" placeholder="Paste URL here" required>
+    <button>Scan</button>
+</form>
+</div>
+
+{% if result %}
+<div class="card result {{ result.final_label|lower }}" style="margin-top:12px;">
+    <h3>{{ result.final_label }}</h3>
+    <p>Risk: <b>{{ result.risk_level }}</b></p>
+    <p>Probability: <b>{{ result.probability }}%</b></p>
+</div>
+{% endif %}
+
+{% if recent_scans %}
+<div class="card recent-scans" style="margin-top:12px;">
+<h4>Recent Scans</h4>
+
+<table>
+<tr>
+    <th>URL</th>
+    <th>Result</th>
+    <th>Time</th>
+</tr>
+{% for s in recent_scans %}
+<tr>
+    <td class="url-cell" title="{{ s.url }}">{{ s.url }}</td>
+    <td class="result-cell {{ s.label|lower }}">{{ s.label }}</td>
+    <td class="time-cell">{{ s.date }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<div class="view-all">
+    <a href="#">View all →</a>
+</div>
+</div>
+{% endif %}
+
+</div>
+
+<!-- RIGHT COLUMN -->
+<div>
+
+<div class="card">
+<h4>AI Analysis Breakdown</h4>
+
+{% if result %}
+{% for k,v in result.analysis_scores.items() %}
+<div class="analysis-item">
+    <div class="analysis-header">
+        <span>{{ k }}</span>
+        <span>{{ v }}%</span>
+    </div>
+    <div class="progress">
+        <div class="progress-bar" style="width: {{ v }}%"></div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p style="opacity:0.6;">Run a scan to view detailed AI analysis</p>
+{% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+<h4>🌐 Domain Intelligence</h4>
+
+<div class="domain-grid">
+    <div class="domain-item">
+        <span>Domain Age</span><br>
+        <b>{{ result.domain_age if result else "—" }} days</b>
+    </div>
+    <div class="domain-item">
+        <span>SSL Status</span><br>
+        <b>{{ result.ssl_status if result else "—" }}</b>
+    </div>
+    <div class="domain-item">
+        <span>Country</span><br>
+        <b>{{ result.country if result else "—" }}</b>
+    </div>
+    <div class="domain-item">
+        <span>Registrar</span><br>
+        <b>{{ result.registrar if result else "—" }}</b>
+    </div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
 
 </body>
 </html>

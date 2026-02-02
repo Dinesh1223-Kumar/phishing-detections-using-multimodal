@@ -1,13 +1,8 @@
 from flask import Flask, render_template, request
-import joblib
-import os
-import csv
+import joblib, os, csv
 from datetime import datetime
 import requests
 
-# ==============================
-# Feature extractors
-# ==============================
 from features.url_features import extract_url_features
 from features.html_features import extract_html_features
 from features.network_features import extract_network_features
@@ -17,9 +12,7 @@ from features.text_preprocessing import clean_text
 
 app = Flask(__name__)
 
-# ==============================
-# Load models (once)
-# ==============================
+# ================== Load models ==================
 url_model = joblib.load("models/url_model.pkl")
 html_model = joblib.load("models/html_model.pkl")
 network_model = joblib.load("models/network_model.pkl")
@@ -27,189 +20,182 @@ text_model = joblib.load("models/text_model.pkl")
 text_vectorizer = joblib.load("models/text_vectorizer.pkl")
 behavioral_model = joblib.load("models/behavioral_model.pkl")
 
-# ==============================
-# Feature order
-# ==============================
+# ================== Feature Order ==================
 URL_FEATURE_ORDER = [
-    "url_length", "count_dots", "count_hyphen", "has_at_symbol",
-    "has_https", "has_login_word", "subdomain_count", "is_ip_address"
+    "url_length","count_dots","count_hyphen","has_at_symbol",
+    "has_https","has_login_word","subdomain_count","is_ip_address"
 ]
 
 HTML_FEATURE_ORDER = [
-    "form_count", "password_input_count", "iframe_count",
-    "external_link_count", "has_suspicious_words", "html_length"
+    "form_count","password_input_count","iframe_count",
+    "external_link_count","has_suspicious_words","html_length"
 ]
 
 NETWORK_FEATURE_ORDER = [
-    "domain_length", "num_subdomains", "has_ip_address",
-    "dns_resolves", "uses_https"
+    "domain_length","num_subdomains","has_ip_address",
+    "dns_resolves","uses_https"
 ]
 
-# ====== 7 features for trained behavioral model ======
 BEHAVIOR_FEATURE_ORDER = [
-    "has_login_form", "password_input_count", "hidden_input_count",
-    "has_submit_button", "has_urgent_words", "has_meta_refresh",
+    "has_login_form","password_input_count","hidden_input_count",
+    "has_submit_button","has_urgent_words","has_meta_refresh",
     "form_action_external"
 ]
 
-# ==============================
-# Logging all scans
-# ==============================
-def log_scan(url, label, probability, risk):
+# ================== Ensure log files ==================
+def ensure_file(path, headers):
     os.makedirs("logs", exist_ok=True)
-    log_file = "logs/scan_history.csv"
-    file_exists = os.path.isfile(log_file)
+    if not os.path.isfile(path):
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow(headers)
 
-    with open(log_file, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["timestamp", "url", "label", "probability", "risk"])
-        writer.writerow([
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            url, label, probability, risk
-        ])
+ensure_file("logs/scan_history.csv",
+            ["timestamp","url","label","probability","risk"])
 
-# ==============================
-# Dashboard stats
-# ==============================
+ensure_file("logs/phishing_urls.csv",
+            ["timestamp","url","probability","risk"])
+
+ensure_file("logs/legit_urls.csv",
+            ["timestamp","url","probability"])
+
+ensure_file("logs/uncertain_predictions.csv",
+            ["timestamp","url","probability"])
+
+# ================== Logging ==================
+def log_scan(url, label, probability, risk):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open("logs/scan_history.csv","a",newline="",encoding="utf-8") as f:
+        csv.writer(f).writerow([now,url,label,probability,risk])
+
+    if label == "Phishing":
+        with open("logs/phishing_urls.csv","a",newline="",encoding="utf-8") as f:
+            csv.writer(f).writerow([now,url,probability,risk])
+
+    elif label == "Legitimate":
+        with open("logs/legit_urls.csv","a",newline="",encoding="utf-8") as f:
+            csv.writer(f).writerow([now,url,probability])
+
+    else:
+        with open("logs/uncertain_predictions.csv","a",newline="",encoding="utf-8") as f:
+            csv.writer(f).writerow([now,url,probability])
+
+# ================== Dashboard Stats ==================
+def count_rows(path):
+    if not os.path.isfile(path):
+        return 0
+    with open(path, newline="", encoding="utf-8") as f:
+        return max(0, sum(1 for _ in f) - 1)
+
 def get_dashboard_stats():
-    stats = {"total": 0, "phishing": 0, "legit": 0, "suspicious": 0}
-    log_file = "logs/scan_history.csv"
-    if not os.path.isfile(log_file):
-        return stats
+    return {
+        "total": count_rows("logs/scan_history.csv"),
+        "phishing": count_rows("logs/phishing_urls.csv"),
+        "legit": count_rows("logs/legit_urls.csv"),
+        "suspicious": count_rows("logs/uncertain_predictions.csv")
+    }
 
-    with open(log_file, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            stats["total"] += 1
-            try:
-                prob = float(row.get("probability", 0))
-            except ValueError:
-                prob = 0
-            label = row.get("label", "Legitimate")
+# ================== Recent Scans ==================
+def get_recent_scans(limit=4):   # ✅ ONLY LAST 4
+    scans = []
+    path = "logs/scan_history.csv"
 
-            if label == "Phishing":
-                stats["phishing"] += 1
-            elif 40 <= prob < 50:
-                stats["suspicious"] += 1
-            else:
-                stats["legit"] += 1
-    return stats
+    if not os.path.isfile(path):
+        return scans
 
-# ==============================
-# Main phishing prediction
-# ==============================
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))[-limit:]
+
+    for r in reversed(rows):
+        scans.append({
+            "url": r["url"],
+            "label": r["label"],
+            "date": r["timestamp"]
+        })
+
+    return scans
+
+# ================== Prediction ==================
 def predict_phishing(url):
-    model_scores = {}
-    reasons = []
+    raw_scores = {}
 
-    # -------- URL model --------
-    url_features = extract_url_features(url)
-    url_vector = [[url_features.get(f, 0) for f in URL_FEATURE_ORDER]]
-    url_proba = url_model.predict_proba(url_vector)[0][1]
-    model_scores["URL"] = round(url_proba, 2)
-    if url_features.get("is_ip_address", 0):
-        reasons.append("IP address used instead of domain name")
-    if url_features.get("has_login_word", 0):
-        reasons.append("Suspicious login-related word in URL")
+    uf = extract_url_features(url)
+    raw_scores["URL"] = url_model.predict_proba(
+        [[uf[f] for f in URL_FEATURE_ORDER]]
+    )[0][1]
 
-    # -------- Network model --------
-    net_features = extract_network_features(url)
-    net_vector = [[net_features.get(f, 0) for f in NETWORK_FEATURE_ORDER]]
-    net_proba = network_model.predict_proba(net_vector)[0][1]
-    model_scores["Network"] = round(net_proba, 2)
-    if net_features.get("dns_resolves", 1) == 0:
-        reasons.append("Domain does not resolve via DNS")
+    nf = extract_network_features(url)
+    raw_scores["Network"] = network_model.predict_proba(
+        [[nf[f] for f in NETWORK_FEATURE_ORDER]]
+    )[0][1]
 
-    # -------- Optional HTML / NLP / Behavioral models --------
-    html_content = None
+    html = None
     try:
         r = requests.get(url, timeout=5)
-        if "text/html" in r.headers.get("Content-Type", ""):
-            html_content = r.text
+        if "text/html" in r.headers.get("Content-Type",""):
+            html = r.text
     except:
-        html_content = None
+        pass
 
-    if html_content:
-        # HTML features
-        html_features = extract_html_features(html_content)
-        html_vector = [[html_features.get(f, 0) for f in HTML_FEATURE_ORDER]]
-        html_proba = html_model.predict_proba(html_vector)[0][1]
-        model_scores["HTML"] = round(html_proba, 2)
-        if html_features.get("password_input_count", 0) > 0:
-            reasons.append("Password input field detected")
+    if html:
+        hf = extract_html_features(html)
+        raw_scores["HTML"] = html_model.predict_proba(
+            [[hf[f] for f in HTML_FEATURE_ORDER]]
+        )[0][1]
 
-        # NLP
-        text = extract_visible_text(html_content)
-        cleaned = clean_text(text)
-        text_vec = text_vectorizer.transform([cleaned])
-        nlp_proba = text_model.predict_proba(text_vec)[0][1]
-        model_scores["NLP"] = round(nlp_proba, 2)
-        if any(w in cleaned for w in ["verify", "urgent", "confirm", "suspended"]):
-            reasons.append("Urgent phishing language detected")
+        text = clean_text(extract_visible_text(html))
+        raw_scores["NLP"] = text_model.predict_proba(
+            text_vectorizer.transform([text])
+        )[0][1]
 
-        # Behavioral
-        beh_features = extract_behavioral_features(html_content, url)
-        beh_vector = [[beh_features.get(f, 0) for f in BEHAVIOR_FEATURE_ORDER]]
-        beh_proba = behavioral_model.predict_proba(beh_vector)[0][1]
-        model_scores["Behavioral"] = round(beh_proba, 2)
-        if beh_features.get("form_action_external", 0):
-            reasons.append("Form submits data to an external domain")
+        bf = extract_behavioral_features(html, url)
+        raw_scores["Behavioral"] = behavioral_model.predict_proba(
+            [[bf[f] for f in BEHAVIOR_FEATURE_ORDER]]
+        )[0][1]
 
-    # -------- Fusion --------
-    weights = {
-        "URL": 0.25,
-        "Network": 0.25,
-        "HTML": 0.2 if html_content else 0,
-        "NLP": 0.15 if html_content else 0,
-        "Behavioral": 0.15 if html_content else 0
-    }
-
-    weighted_sum = sum(model_scores[m] * weights[m] for m in model_scores)
-    total_weight = sum(weights[m] for m in model_scores)
-    final_score = weighted_sum / total_weight if total_weight > 0 else 0
-
-    probability = round(final_score * 100, 2)
-    final_label = "Phishing" if probability >= 50 else "Legitimate"
+    weights = {"URL":0.25,"Network":0.25,"HTML":0.2,"NLP":0.15,"Behavioral":0.15}
+    final = sum(raw_scores[k]*weights[k] for k in raw_scores) / sum(weights[k] for k in raw_scores)
+    probability = round(final * 100, 2)
 
     if probability >= 80:
-        risk_level = "HIGH"
+        label, risk = "Phishing", "HIGH"
     elif probability >= 50:
-        risk_level = "MEDIUM"
+        label, risk = "Suspicious", "MEDIUM"
     else:
-        risk_level = "LOW"
+        label, risk = "Legitimate", "LOW"
 
-    # Log scan
-    log_scan(url, final_label, probability, risk_level)
-
-    return {
-        "final_label": final_label,
-        "probability": probability,
-        "risk_level": risk_level,
-        "model_scores": model_scores,
-        "reasons": list(set(reasons))
+    analysis_scores = {
+        "URL Analysis": int(raw_scores.get("URL", 0) * 100),
+        "Network Reputation": int(raw_scores.get("Network", 0) * 100),
+        "HTML Structure": int(raw_scores.get("HTML", 0) * 100),
+        "Language Analysis": int(raw_scores.get("NLP", 0) * 100),
+        "Behavioral Signals": int(raw_scores.get("Behavioral", 0) * 100)
     }
 
-# ==============================
-# Routes
-# ==============================
-@app.route("/", methods=["GET", "POST"])
+    log_scan(url, label, probability, risk)
+
+    return {
+        "final_label": label,
+        "risk_level": risk,
+        "probability": probability,
+        "analysis_scores": analysis_scores
+    }
+
+# ================== Route ==================
+@app.route("/", methods=["GET","POST"])
 def index():
     result = None
-    error = None
-
     if request.method == "POST":
-        url = request.form.get("url", "").strip()
-        if not url:
-            error = "Please enter a valid URL"
-        else:
+        url = request.form.get("url","").strip()
+        if url:
             result = predict_phishing(url)
 
-    stats = get_dashboard_stats()
-    return render_template("index.html", result=result, stats=stats, error=error)
+    return render_template(
+        "index.html",
+        result=result,
+        stats=get_dashboard_stats(),
+        recent_scans=get_recent_scans()
+    )
 
-# ==============================
-# Run app
-# ==============================
 if __name__ == "__main__":
     app.run(debug=True)
