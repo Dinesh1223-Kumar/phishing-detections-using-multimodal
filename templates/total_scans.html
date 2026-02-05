@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Total Scans</title>
+
+<style>
+body{
+    margin:0;
+    background:#020617;
+    color:#e5e7eb;
+    font-family: Inter, Segoe UI, sans-serif;
+}
+.container{
+    padding:24px;
+}
+h2{
+    margin-bottom:16px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+}
+thead{
+    background:#020617;
+    position:sticky;
+    top:0;
+}
+th, td{
+    padding:12px 10px;
+    border-bottom:1px solid rgba(30,41,59,0.7);
+    text-align:left;
+}
+tr:hover{
+    background:rgba(59,130,246,0.08);
+}
+.phishing{ color:#ef4444; font-weight:600; }
+.legitimate{ color:#22c55e; font-weight:600; }
+.suspicious{ color:#facc15; font-weight:600; }
+
+.back{
+    display:inline-block;
+    margin-bottom:14px;
+    color:#60a5fa;
+    text-decoration:none;
+}
+.back:hover{ text-decoration:underline; }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+    <a href="/" class="back">← Back to Dashboard</a>
+
+    <h2>📊 Total Scanned URLs</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>URL</th>
+                <th>Result</th>
+                <th>Probability</th>
+                <th>Risk</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in scans %}
+            <tr>
+                <td>{{ s.timestamp }}</td>
+                <td title="{{ s.url }}">{{ s.url }}</td>
+                <td class="{{ s.label|lower }}">{{ s.label }}</td>
+                <td>{{ s.probability }}%</td>
+                <td>{{ s.risk }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+</body>
+</html>

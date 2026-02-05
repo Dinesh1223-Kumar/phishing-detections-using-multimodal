@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request
-import joblib, os, csv
+import joblib, os, csv, socket, ssl
 from datetime import datetime
 import requests
+import whois
+import tldextract
 
 from features.url_features import extract_url_features
 from features.html_features import extract_html_features
@@ -42,7 +44,7 @@ BEHAVIOR_FEATURE_ORDER = [
     "form_action_external"
 ]
 
-# ================== Ensure log files ==================
+# ================== Ensure logs ==================
 def ensure_file(path, headers):
     os.makedirs("logs", exist_ok=True)
     if not os.path.isfile(path):
@@ -71,16 +73,14 @@ def log_scan(url, label, probability, risk):
     if label == "Phishing":
         with open("logs/phishing_urls.csv","a",newline="",encoding="utf-8") as f:
             csv.writer(f).writerow([now,url,probability,risk])
-
     elif label == "Legitimate":
         with open("logs/legit_urls.csv","a",newline="",encoding="utf-8") as f:
             csv.writer(f).writerow([now,url,probability])
-
     else:
         with open("logs/uncertain_predictions.csv","a",newline="",encoding="utf-8") as f:
             csv.writer(f).writerow([now,url,probability])
 
-# ================== Dashboard Stats ==================
+# ================== Dashboard ==================
 def count_rows(path):
     if not os.path.isfile(path):
         return 0
@@ -95,25 +95,59 @@ def get_dashboard_stats():
         "suspicious": count_rows("logs/uncertain_predictions.csv")
     }
 
-# ================== Recent Scans ==================
-def get_recent_scans(limit=4):   # ✅ ONLY LAST 4
-    scans = []
+def get_recent_scans(limit=4):
     path = "logs/scan_history.csv"
-
     if not os.path.isfile(path):
-        return scans
+        return []
 
     with open(path, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))[-limit:]
 
-    for r in reversed(rows):
-        scans.append({
-            "url": r["url"],
-            "label": r["label"],
-            "date": r["timestamp"]
-        })
+    return [{
+        "url": r["url"],
+        "label": r["label"],
+        "date": r["timestamp"]
+    } for r in reversed(rows)]
 
-    return scans
+# ================== DOMAIN INTELLIGENCE ==================
+def get_domain_intelligence(url):
+    data = {
+        "domain_age": "—",
+        "ssl_status": "—",
+        "country": "—",
+        "registrar": "—"
+    }
+
+    try:
+        extracted = tldextract.extract(url)
+        domain = f"{extracted.domain}.{extracted.suffix}"
+
+        # SSL check
+        try:
+            context = ssl.create_default_context()
+            with context.wrap_socket(
+                socket.socket(), server_hostname=domain
+            ) as s:
+                s.settimeout(3)
+                s.connect((domain, 443))
+                data["ssl_status"] = "Valid"
+        except:
+            data["ssl_status"] = "Invalid / None"
+
+        # WHOIS
+        w = whois.whois(domain)
+
+        if w.creation_date:
+            created = w.creation_date[0] if isinstance(w.creation_date, list) else w.creation_date
+            data["domain_age"] = (datetime.now() - created).days
+
+        data["registrar"] = w.registrar or "Unknown"
+        data["country"] = w.country or "Unknown"
+
+    except:
+        pass
+
+    return data
 
 # ================== Prediction ==================
 def predict_phishing(url):
@@ -172,14 +206,31 @@ def predict_phishing(url):
         "Behavioral Signals": int(raw_scores.get("Behavioral", 0) * 100)
     }
 
+    domain_info = get_domain_intelligence(url)
     log_scan(url, label, probability, risk)
 
     return {
         "final_label": label,
         "risk_level": risk,
         "probability": probability,
-        "analysis_scores": analysis_scores
+        "analysis_scores": analysis_scores,
+        **domain_info
     }
+@app.route("/total-scans")
+def total_scans():
+    scans = []
+
+    path = "logs/scan_history.csv"
+    if os.path.isfile(path):
+        with open(path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            scans = list(reader)
+
+    return render_template(
+        "total_scans.html",
+        scans=scans
+    )
+
 
 # ================== Route ==================
 @app.route("/", methods=["GET","POST"])

@@ -2,202 +2,558 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Phishing Detection</title>
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-* {
+:root{
+    --bg-1:#020617;
+    --bg-2:#0b1220;
+    --card: rgba(2,6,23,0.82);
+    --card-2: rgba(15,23,42,0.65);
+    --stroke: rgba(30,41,59,0.9);
+    --muted:#94a3b8;
+    --text:#e5e7eb;
+
+    --blue:#3b82f6;
+    --green:#22c55e;
+    --red:#ef4444;
+    --yellow:#facc15;
+
+    --radius: 16px;
+    --shadow: 0 18px 45px rgba(0,0,0,0.35);
+    --shadow-soft: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+*{
     box-sizing: border-box;
-    font-family: Inter, Segoe UI, sans-serif;
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
-body {
+body{
     margin: 0;
-    background: radial-gradient(circle at top, #0f172a, #020617);
-    color: #e5e7eb;
+    background:
+        radial-gradient(900px circle at 12% 0%, rgba(59,130,246,0.20), transparent 45%),
+        radial-gradient(800px circle at 90% 10%, rgba(34,197,94,0.16), transparent 40%),
+        radial-gradient(700px circle at 60% 95%, rgba(250,204,21,0.10), transparent 45%),
+        linear-gradient(180deg, #0b1220 0%, #020617 60%);
+    color: var(--text);
 }
 
-.dashboard {
+a{ color: inherit; }
+
+/* Layout */
+.dashboard{
     display: grid;
-    grid-template-columns: 230px 1fr;
+    grid-template-columns: 260px 1fr;
     min-height: 100vh;
 }
 
 /* Sidebar */
-.sidebar {
-    background: #020617;
-    padding: 18px;
-    border-right: 1px solid #1e293b;
+.sidebar{
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 18px 14px;
+    background: linear-gradient(180deg, rgba(2,6,23,0.96), rgba(2,6,23,0.86));
+    border-right: 1px solid var(--stroke);
 }
-.sidebar a {
-    display: block;
-    padding: 10px;
-    margin-bottom: 8px;
-    color: #94a3b8;
+
+.brand{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 16px 10px;
+    border-bottom: 1px solid rgba(30,41,59,0.7);
+    margin-bottom: 14px;
+}
+.brand-badge{
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.85), rgba(34,197,94,0.35)),
+        rgba(15,23,42,0.6);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 12px 25px rgba(0,0,0,0.35);
+    border: 1px solid rgba(148,163,184,0.15);
+}
+.brand h3{
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.2px;
+}
+.brand p{
+    margin: 2px 0 0 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.nav{
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+}
+.nav a{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 12px;
+    border-radius: 12px;
     text-decoration: none;
-    border-radius: 6px;
+    color: rgba(148,163,184,0.95);
+    border: 1px solid rgba(30,41,59,0.55);
+    background: rgba(2,6,23,0.35);
+    transition: 0.2s ease;
 }
-.sidebar a.active,
-.sidebar a:hover {
-    background: #1e293b;
-    color: #22c55e;
+.nav a:hover{
+    transform: translateY(-1px);
+    background: rgba(15,23,42,0.55);
+    border-color: rgba(59,130,246,0.35);
+    color: var(--text);
+}
+.nav a.active{
+    background: linear-gradient(90deg, rgba(59,130,246,0.18), rgba(34,197,94,0.10));
+    border-color: rgba(59,130,246,0.35);
+    color: var(--text);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+.nav small{
+    font-size: 11px;
+    color: rgba(148,163,184,0.8);
+}
+
+.sidebar-footer{
+    position: absolute;
+    bottom: 16px;
+    left: 14px;
+    right: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(30,41,59,0.7);
+    color: rgba(148,163,184,0.85);
+    font-size: 12px;
 }
 
 /* Main */
-.main {
-    padding: 18px 22px;
+.main{
+    padding: 22px 26px;
 }
 
 /* Header */
-.header {
+.header{
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 14px;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.header-title{
+    display: grid;
+    gap: 4px;
+}
+.header-title h2{
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: 0.2px;
+}
+.header-title p{
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+.user-pill{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(30,41,59,0.8);
+    background: rgba(2,6,23,0.55);
+    box-shadow: var(--shadow-soft);
+}
+.user-dot{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 6px rgba(34,197,94,0.15);
+}
+.user-pill span{
+    font-size: 13px;
+    color: rgba(229,231,235,0.95);
+}
+.user-pill small{
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
 }
 
 /* Stats */
-.stats {
+.stats{
     display: grid;
-    grid-template-columns: repeat(4,1fr);
-    gap: 12px;
-    margin-bottom: 14px;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 14px;
+    margin-bottom: 16px;
 }
-.stat {
-    background: #020617;
-    padding: 14px;
-    border-radius: 10px;
-    border: 1px solid #1e293b;
+.kpi {
+    border-radius: var(--radius);
+    border: 1px solid rgba(30,41,59,0.85);
+    background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.10), transparent 55%),
+        rgba(2,6,23,0.72);
+    padding: 14px 14px;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+
+    /* Add smooth hover transition */
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.kpi:hover {
+    transform: translateY(-2px); /* subtle lift */
+    box-shadow: 0 18px 45px rgba(59,130,246,0.35); /* glowing effect */
+    border-color: rgba(59,130,246,0.45); /* subtle border highlight */
+}
+
+.kpi::after{
+    content:"";
+    position:absolute;
+    inset:-40px -40px auto auto;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(59,130,246,0.18), transparent 60%);
+    transform: rotate(25deg);
+}
+.kpi .top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom: 8px;
+}
+.kpi .label{
+    font-size: 12px;
+    color: var(--muted);
+}
+.kpi .value{
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+.kpi .hint{
+    font-size: 11px;
+    color: rgba(148,163,184,0.8);
+    margin-top: 4px;
+}
+.badge{
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.18);
+    background: rgba(15,23,42,0.55);
 }
 
 /* Content */
-.content {
+.content{
     display: grid;
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: 1.55fr 1fr;
     gap: 16px;
 }
 
-.card {
-    background: #020617;
-    border-radius: 12px;
-    border: 1px solid #1e293b;
+/* Cards */
+.card{
+    background: var(--card);
+    border: 1px solid rgba(30,41,59,0.85);
+    border-radius: var(--radius);
     padding: 16px;
-    box-shadow: inset 0 0 0 1px #1e293b;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
 }
 
-/* Scan */
-.scan-box input {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    background: #020617;
-    color: white;
-    border: 1px solid #1e293b;
+.card-title{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 10px;
+    margin-bottom: 10px;
 }
-.scan-box button {
-    margin-top: 10px;
-    width: 100%;
-    padding: 12px;
-    background: #2563eb;
-    border-radius: 8px;
-    border: none;
-    color: white;
-}
-
-/* Result */
-.result.phishing { border-left: 5px solid #ef4444; }
-.result.legitimate { border-left: 5px solid #22c55e; }
-.result.suspicious { border-left: 5px solid #facc15; }
-
-/* Recent Scans */
-.recent-scans {
-    max-height: 200px;
-    overflow-y: auto;
-}
-.recent-scans::-webkit-scrollbar {
-    width: 6px;
-}
-.recent-scans::-webkit-scrollbar-thumb {
-    background: #1e293b;
-    border-radius: 10px;
-}
-.url-cell {
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #93c5fd;
-}
-
-/* Analysis */
-.analysis-item {
-    margin-bottom: 14px;
-}
-.analysis-header {
-    display: flex;
-    justify-content: space-between;
+.card-title h4{
+    margin:0;
     font-size: 14px;
-    margin-bottom: 4px;
+    letter-spacing: 0.2px;
 }
-.progress {
-    height: 8px;
-    background: #020617;
-    border-radius: 6px;
-    overflow: hidden;
-}
-.progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #22c55e, #3b82f6);
+.subtle{
+    font-size: 12px;
+    color: var(--muted);
 }
 
-/* Tables */
-table {
+/* Scan box */
+.scan-box form{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+}
+.scan-input{
+    flex: 1;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding: 12px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(30,41,59,0.9);
+    background: rgba(2,6,23,0.55);
+}
+.scan-icon{
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display:grid;
+    place-items:center;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.25);
+}
+.scan-box input{
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+}
+.scan-box input::placeholder{
+    color: rgba(148,163,184,0.85);
+}
+.scan-box button{
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(59,130,246,0.45);
+    background: linear-gradient(180deg, rgba(59,130,246,1), rgba(37,99,235,1));
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    min-width: 120px;
+    transition: 0.2s ease;
+}
+.scan-box button:hover{
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+}
+.scan-box button:active{
+    transform: translateY(0px);
+}
+
+/* Result card */
+.result{
+    position: relative;
+    overflow: hidden;
+}
+.result::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    opacity: 0.10;
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.20), transparent 55%);
+    pointer-events:none;
+}
+.result.phishing{ border-left: 6px solid var(--red); }
+.result.legitimate{ border-left: 6px solid var(--green); }
+.result.suspicious{ border-left: 6px solid var(--yellow); }
+
+.result-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+}
+.pill{
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.18);
+    background: rgba(15,23,42,0.55);
+    color: rgba(229,231,235,0.95);
+}
+.pill.red{ border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.10); }
+.pill.green{ border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.10); }
+.pill.yellow{ border-color: rgba(250,204,21,0.35); background: rgba(250,204,21,0.10); }
+
+.result-metrics{
+    margin-top: 10px;
+    display:grid;
+    gap: 8px;
+}
+.metric{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size: 13px;
+    color: rgba(229,231,235,0.95);
+}
+.metric span{
+    color: var(--muted);
+}
+.meter{
+    margin-top: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(15,23,42,0.8);
+    border: 1px solid rgba(30,41,59,0.8);
+    overflow:hidden;
+}
+.meter-fill{
+    height:100%;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(34,197,94,1), rgba(250,204,21,1), rgba(239,68,68,1));
+}
+
+/* Recent scans table */
+.recent-scans{
+    max-height: 240px;
+    overflow: auto;
+}
+.recent-scans::-webkit-scrollbar{ width: 8px; }
+.recent-scans::-webkit-scrollbar-thumb{
+    background: rgba(51,65,85,0.8);
+    border-radius: 999px;
+    border: 2px solid rgba(2,6,23,0.85);
+}
+table{
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
-th {
+thead th{
+    position: sticky;
+    top: 0;
+    background: rgba(2,6,23,0.92);
+    backdrop-filter: blur(10px);
+    padding: 10px 6px;
     text-align: left;
-    padding-bottom: 8px;
-    color: #94a3b8;
+    color: rgba(148,163,184,0.95);
+    border-bottom: 1px solid rgba(30,41,59,0.8);
 }
-td {
-    padding: 8px 6px;
+tbody td{
+    padding: 10px 6px;
+    border-bottom: 1px solid rgba(30,41,59,0.55);
 }
-.result-cell.phishing { color: #ef4444; }
-.result-cell.legitimate { color: #22c55e; }
-.result-cell.suspicious { color: #facc15; }
-.time-cell {
+tbody tr:hover{
+    background: rgba(59,130,246,0.06);
+}
+.url-cell{
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(147,197,253,0.95);
+}
+.result-cell.phishing{ color: var(--red); font-weight: 600; }
+.result-cell.legitimate{ color: var(--green); font-weight: 600; }
+.result-cell.suspicious{ color: var(--yellow); font-weight: 600; }
+.time-cell{
     white-space: nowrap;
     font-size: 12px;
-    color: #94a3b8;
+    color: rgba(148,163,184,0.95);
+}
+.view-all{
+    display:flex;
+    justify-content:flex-end;
+    margin-top: 10px;
+}
+.view-all a{
+    color: rgba(96,165,250,0.95);
+    font-size: 12px;
+    text-decoration: none;
+}
+.view-all a:hover{
+    text-decoration: underline;
+}
+
+/* Analysis */
+.analysis-item{ margin-bottom: 14px; }
+.analysis-header{
+    display:flex;
+    justify-content:space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: rgba(229,231,235,0.95);
+}
+.analysis-header span:last-child{
+    color: rgba(148,163,184,0.95);
+}
+.progress{
+    height: 10px;
+    background: rgba(15,23,42,0.85);
+    border: 1px solid rgba(30,41,59,0.75);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.progress-bar{
+    height: 100%;
+    background: linear-gradient(90deg, rgba(34,197,94,1), rgba(59,130,246,1));
 }
 
 /* Domain Intelligence */
-.domain-grid {
-    display: grid;
+.domain-grid{
+    display:grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
-.domain-item {
-    background: #020617;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 10px;
+.domain-item{
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(2,6,23,0.55);
+    border: 1px solid rgba(30,41,59,0.85);
+}
+.domain-item span{
+    color: rgba(148,163,184,0.95);
+    font-size: 12px;
+}
+.domain-item b{
+    display:block;
+    margin-top: 4px;
     font-size: 13px;
 }
-.domain-item span {
-    color: #94a3b8;
+
+/* Chart wrappers */
+.radar-wrapper{ height: 320px; width: 100%; margin-top: 10px; }
+.pie-wrapper{ height: 290px; width: 100%; margin-top: 10px; }
+
+.radar-subtitle,
+.pie-subtitle{
     font-size: 12px;
+    color: rgba(148,163,184,0.95);
+    margin-top: -6px;
 }
 
-/* View All */
-.view-all {
-    text-align: right;
-    margin-top: 6px;
+/* Global Scrollbar */
+html{
+    scrollbar-width: thin;
+    scrollbar-color: rgba(51,65,85,0.8) rgba(2,6,23,1);
 }
-.view-all a {
-    color: #60a5fa;
-    font-size: 12px;
-    text-decoration: none;
+body::-webkit-scrollbar{ width: 10px; }
+body::-webkit-scrollbar-track{ background: rgba(2,6,23,1); }
+body::-webkit-scrollbar-thumb{
+    background: rgba(51,65,85,0.8);
+    border-radius: 999px;
+    border: 2px solid rgba(2,6,23,1);
+}
+body::-webkit-scrollbar-thumb:hover{ background: rgba(71,85,105,0.9); }
+
+/* Responsive */
+@media (max-width: 1100px){
+    .dashboard{ grid-template-columns: 1fr; }
+    .sidebar{ position: relative; height: auto; }
+    .content{ grid-template-columns: 1fr; }
+    .stats{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 520px){
+    .stats{ grid-template-columns: 1fr; }
+    .scan-box form{ flex-direction: column; }
+    .scan-box button{ width: 100%; }
 }
 </style>
 </head>
@@ -206,125 +562,411 @@ td {
 
 <div class="dashboard">
 
-<div class="sidebar">
-    <h3>🛡 PhshPay</h3>
-    <a class="active">Dashboard</a>
-    <a>Reports</a>
-    <a>Settings</a>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-badge">🛡️</div>
+            <div>
+                <h3>PhshPay</h3>
+                <p>AI Security Console</p>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <a class="active">
+                <span>Dashboard</span>
+                <small>Live</small>
+            </a>
+            <a>
+                <span>Reports</span>
+                <small>Logs</small>
+            </a>
+            <a>
+                <span>Settings</span>
+                <small>System</small>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Threat Engine</span>
+                <span style="color:rgba(34,197,94,0.95); font-weight:600;">Online</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+        <div class="header">
+            <div class="header-title">
+                <h2>AI Phishing Detection</h2>
+                <p>Scan links instantly • View risk distribution • Investigate signals</p>
+            </div>
+
+            <div class="user-pill">
+                <div class="user-dot"></div>
+                <div>
+                    <span>Welcome, Lucifer</span>
+                    <small>Security Analyst</small>
+                </div>
+            </div>
+        </div>
+
+        <section class="stats">
+            <a href="{{ url_for('total_scans') }}" style="text-decoration:none;">
+            <div class="kpi">
+                <div class="top">
+                    <div class="label">Total Scans</div>
+                    <div class="badge">All</div>
+                </div>
+                <div class="value">{{ stats.total }}</div>
+                <div class="hint">All URLs analyzed so far</div>
+            </div>
+            </a>
+
+            <div class="kpi">
+                <div class="top">
+                    <div class="label">Phishing</div>
+                    <div class="badge" style="border-color:rgba(239,68,68,0.35); background:rgba(239,68,68,0.10);">High</div>
+                </div>
+                <div class="value">{{ stats.phishing }}</div>
+                <div class="hint">Detected malicious patterns</div>
+            </div>
+
+            <div class="kpi">
+                <div class="top">
+                    <div class="label">Legitimate</div>
+                    <div class="badge" style="border-color:rgba(34,197,94,0.35); background:rgba(34,197,94,0.10);">Safe</div>
+                </div>
+                <div class="value">{{ stats.legit }}</div>
+                <div class="hint">Trusted / clean signals</div>
+            </div>
+
+            <div class="kpi">
+                <div class="top">
+                    <div class="label">Suspicious</div>
+                    <div class="badge" style="border-color:rgba(250,204,21,0.35); background:rgba(250,204,21,0.10);">Medium</div>
+                </div>
+                <div class="value">{{ stats.suspicious }}</div>
+                <div class="hint">Needs manual review</div>
+            </div>
+        </section>
+
+        <section class="content">
+
+            <!-- LEFT -->
+            <div>
+
+                <div class="card scan-box">
+                    <div class="card-title">
+                        <h4>🔍 Scan a URL</h4>
+                        <div class="subtle">Paste link → Scan → Get risk score</div>
+                    </div>
+
+                    <form method="POST">
+                        <div class="scan-input">
+                            <div class="scan-icon">🔗</div>
+                            <input name="url" placeholder="https://example.com/login" required>
+                        </div>
+                        <button type="submit">Scan Now</button>
+                    </form>
+                </div>
+
+                {% if result %}
+                <div class="card result {{ result.final_label|lower }}" style="margin-top:12px;">
+                    <div class="result-head">
+                        <h3 style="margin:0; font-size:16px;">{{ result.final_label }}</h3>
+
+                        {% if result.final_label|lower == "phishing" %}
+                            <span class="pill red">High Risk</span>
+                        {% elif result.final_label|lower == "suspicious" %}
+                            <span class="pill yellow">Medium Risk</span>
+                        {% else %}
+                            <span class="pill green">Safe</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="result-metrics">
+                        <div class="metric"><span>Risk Level</span><b>{{ result.risk_level }}</b></div>
+                        <div class="metric"><span>Probability</span><b>{{ result.probability }}%</b></div>
+                    </div>
+
+                    <div class="meter" aria-label="Probability Meter">
+                        <div class="meter-fill" style="width: {{ result.probability }}%;"></div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if recent_scans %}
+                <div class="card recent-scans" style="margin-top:12px;">
+                    <div class="card-title">
+                        <h4>🕒 Recent Scans</h4>
+                        <div class="subtle">Latest scanned URLs</div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>URL</th>
+                                <th>Result</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in recent_scans %}
+                            <tr>
+                                <td class="url-cell" title="{{ s.url }}">{{ s.url }}</td>
+                                <td class="result-cell {{ s.label|lower }}">{{ s.label }}</td>
+                                <td class="time-cell">{{ s.date }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div class="view-all">
+                        <a href="#">View all →</a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title">
+                        <h4>🥧 Scan Results Distribution</h4>
+                        <div class="subtle">Phishing vs Legitimate vs Suspicious</div>
+                    </div>
+
+                    <div class="pie-wrapper">
+                        <canvas id="phishingPie"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT -->
+            <div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <h4>📊 AI Analysis Breakdown</h4>
+                        <div class="subtle">Module confidence levels</div>
+                    </div>
+
+                    {% if result %}
+                        {% for k,v in result.analysis_scores.items() %}
+                        <div class="analysis-item">
+                            <div class="analysis-header">
+                                <span>{{ k }}</span>
+                                <span>{{ v }}%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width: {{ v }}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="opacity:0.65; margin:0;">Run a scan to view detailed AI analysis.</p>
+                    {% endif %}
+                </div>
+
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title">
+                        <h4>🕸️ Threat Intelligence Radar</h4>
+                        <div class="subtle">Signal contribution overview</div>
+                    </div>
+
+                    <div class="radar-wrapper">
+                        <canvas id="phishingRadar"></canvas>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title">
+                        <h4>🌐 Domain Intelligence</h4>
+                        <div class="subtle">Metadata extracted from URL</div>
+                    </div>
+
+                    <div class="domain-grid">
+                        <div class="domain-item">
+                            <span>Domain Age</span>
+                            <b>{{ result.domain_age if result else "—" }} days</b>
+                        </div>
+                        <div class="domain-item">
+                            <span>SSL Status</span>
+                            <b>{{ result.ssl_status if result else "—" }}</b>
+                        </div>
+                        <div class="domain-item">
+                            <span>Country</span>
+                            <b>{{ result.country if result else "—" }}</b>
+                        </div>
+                        <div class="domain-item">
+                            <span>Registrar</span>
+                            <b>{{ result.registrar if result else "—" }}</b>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
 </div>
 
-<div class="main">
+<!-- ============================= -->
+<!-- 🥧 Pie Chart Script -->
+<!-- ============================= -->
+<script>
+(function () {
+    const canvas = document.getElementById("phishingPie");
+    if (!canvas) return;
 
-<div class="header">
-    <h2>AI Phishing Detection</h2>
-    <span>Welcome, Lucifer</span>
-</div>
+    const phishing = {{ stats.phishing | default(0) }};
+    const legit = {{ stats.legit | default(0) }};
+    const suspicious = {{ stats.suspicious | default(0) }};
+    const total = phishing + legit + suspicious;
 
-<div class="stats">
-    <div class="stat">Total<br><b>{{ stats.total }}</b></div>
-    <div class="stat">Phishing<br><b>{{ stats.phishing }}</b></div>
-    <div class="stat">Legit<br><b>{{ stats.legit }}</b></div>
-    <div class="stat">Suspicious<br><b>{{ stats.suspicious }}</b></div>
-</div>
+    const ctx = canvas.getContext("2d");
 
-<div class="content">
+    new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels: ["Phishing", "Legitimate", "Suspicious"],
+            datasets: [{
+                data: [phishing, legit, suspicious],
+                backgroundColor: [
+                    "rgba(239, 68, 68, 0.92)",
+                    "rgba(34, 197, 94, 0.92)",
+                    "rgba(250, 204, 21, 0.92)"
+                ],
+                borderColor: "rgba(2,6,23,1)",
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "70%",
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        color: "rgba(229,231,235,0.95)",
+                        padding: 14,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const percent = total ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${context.label}: ${value} (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
 
-<!-- LEFT COLUMN -->
-<div>
+<!-- ============================= -->
+<!-- 🕸️ Radar Chart Script -->
+<!-- ============================= -->
+<script>
+(function () {
+    const canvas = document.getElementById("phishingRadar");
+    if (!canvas) return;
 
-<div class="card scan-box">
-<form method="POST">
-    <input name="url" placeholder="Paste URL here" required>
-    <button>Scan</button>
-</form>
-</div>
+    const radarScores = {
+        "URL Analysis": 0,
+        "Network Reputation": 0,
+        "HTML Structure": 0,
+        "Language Analysis": 0,
+        "Behavioral Signals": 0
+    };
 
-{% if result %}
-<div class="card result {{ result.final_label|lower }}" style="margin-top:12px;">
-    <h3>{{ result.final_label }}</h3>
-    <p>Risk: <b>{{ result.risk_level }}</b></p>
-    <p>Probability: <b>{{ result.probability }}%</b></p>
-</div>
-{% endif %}
+    {% if result and result.analysis_scores %}
+      const flaskScores = {{ result.analysis_scores | tojson }};
+      Object.assign(radarScores, flaskScores);
+    {% endif %}
 
-{% if recent_scans %}
-<div class="card recent-scans" style="margin-top:12px;">
-<h4>Recent Scans</h4>
+    const labels = Object.keys(radarScores);
+    const values = Object.values(radarScores);
 
-<table>
-<tr>
-    <th>URL</th>
-    <th>Result</th>
-    <th>Time</th>
-</tr>
-{% for s in recent_scans %}
-<tr>
-    <td class="url-cell" title="{{ s.url }}">{{ s.url }}</td>
-    <td class="result-cell {{ s.label|lower }}">{{ s.label }}</td>
-    <td class="time-cell">{{ s.date }}</td>
-</tr>
-{% endfor %}
-</table>
+    let stroke = "rgba(34,197,94,0.95)";
+    let fill   = "rgba(34,197,94,0.14)";
 
-<div class="view-all">
-    <a href="#">View all →</a>
-</div>
-</div>
-{% endif %}
+    {% if result %}
+      const prob = {{ result.probability }};
+      if (prob >= 80) {
+          stroke = "rgba(239,68,68,0.95)";
+          fill   = "rgba(239,68,68,0.16)";
+      } else if (prob >= 50) {
+          stroke = "rgba(250,204,21,0.95)";
+          fill   = "rgba(250,204,21,0.14)";
+      }
+    {% endif %}
 
-</div>
+    const ctx = canvas.getContext("2d");
 
-<!-- RIGHT COLUMN -->
-<div>
-
-<div class="card">
-<h4>AI Analysis Breakdown</h4>
-
-{% if result %}
-{% for k,v in result.analysis_scores.items() %}
-<div class="analysis-item">
-    <div class="analysis-header">
-        <span>{{ k }}</span>
-        <span>{{ v }}%</span>
-    </div>
-    <div class="progress">
-        <div class="progress-bar" style="width: {{ v }}%"></div>
-    </div>
-</div>
-{% endfor %}
-{% else %}
-<p style="opacity:0.6;">Run a scan to view detailed AI analysis</p>
-{% endif %}
-</div>
-
-<div class="card" style="margin-top:16px;">
-<h4>🌐 Domain Intelligence</h4>
-
-<div class="domain-grid">
-    <div class="domain-item">
-        <span>Domain Age</span><br>
-        <b>{{ result.domain_age if result else "—" }} days</b>
-    </div>
-    <div class="domain-item">
-        <span>SSL Status</span><br>
-        <b>{{ result.ssl_status if result else "—" }}</b>
-    </div>
-    <div class="domain-item">
-        <span>Country</span><br>
-        <b>{{ result.country if result else "—" }}</b>
-    </div>
-    <div class="domain-item">
-        <span>Registrar</span><br>
-        <b>{{ result.registrar if result else "—" }}</b>
-    </div>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-</div>
+    new Chart(ctx, {
+        type: "radar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Risk Signals",
+                data: values,
+                fill: true,
+                backgroundColor: fill,
+                borderColor: stroke,
+                pointBackgroundColor: "rgba(255,255,255,0.9)",
+                pointBorderColor: stroke,
+                pointHoverBackgroundColor: "#ffffff",
+                pointHoverBorderColor: stroke,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: "rgba(229,231,235,0.95)",
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.raw}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20,
+                        color: "rgba(148,163,184,0.9)",
+                        backdropColor: "transparent"
+                    },
+                    grid: { color: "rgba(30,41,59,0.9)" },
+                    angleLines: { color: "rgba(30,41,59,0.9)" },
+                    pointLabels: {
+                        color: "rgba(229,231,235,0.9)",
+                        font: { size: 12, weight: "600" }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>
