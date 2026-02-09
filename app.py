@@ -73,14 +73,16 @@ def log_scan(url, label, probability, risk):
     if label == "Phishing":
         with open("logs/phishing_urls.csv","a",newline="",encoding="utf-8") as f:
             csv.writer(f).writerow([now,url,probability,risk])
+
     elif label == "Legitimate":
         with open("logs/legit_urls.csv","a",newline="",encoding="utf-8") as f:
             csv.writer(f).writerow([now,url,probability])
+
     else:
         with open("logs/uncertain_predictions.csv","a",newline="",encoding="utf-8") as f:
             csv.writer(f).writerow([now,url,probability])
 
-# ================== Dashboard ==================
+# ================== Dashboard helpers ==================
 def count_rows(path):
     if not os.path.isfile(path):
         return 0
@@ -109,7 +111,7 @@ def get_recent_scans(limit=4):
         "date": r["timestamp"]
     } for r in reversed(rows)]
 
-# ================== DOMAIN INTELLIGENCE ==================
+# ================== Domain intelligence ==================
 def get_domain_intelligence(url):
     data = {
         "domain_age": "—",
@@ -119,24 +121,19 @@ def get_domain_intelligence(url):
     }
 
     try:
-        extracted = tldextract.extract(url)
-        domain = f"{extracted.domain}.{extracted.suffix}"
+        ext = tldextract.extract(url)
+        domain = f"{ext.domain}.{ext.suffix}"
 
-        # SSL check
         try:
             context = ssl.create_default_context()
-            with context.wrap_socket(
-                socket.socket(), server_hostname=domain
-            ) as s:
+            with context.wrap_socket(socket.socket(), server_hostname=domain) as s:
                 s.settimeout(3)
                 s.connect((domain, 443))
                 data["ssl_status"] = "Valid"
         except:
             data["ssl_status"] = "Invalid / None"
 
-        # WHOIS
         w = whois.whois(domain)
-
         if w.creation_date:
             created = w.creation_date[0] if isinstance(w.creation_date, list) else w.creation_date
             data["domain_age"] = (datetime.now() - created).days
@@ -216,28 +213,15 @@ def predict_phishing(url):
         "analysis_scores": analysis_scores,
         **domain_info
     }
-@app.route("/total-scans")
-def total_scans():
-    scans = []
 
-    path = "logs/scan_history.csv"
-    if os.path.isfile(path):
-        with open(path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            scans = list(reader)
+# ================== ROUTES ==================
 
-    return render_template(
-        "total_scans.html",
-        scans=scans
-    )
-
-
-# ================== Route ==================
-@app.route("/", methods=["GET","POST"])
+@app.route("/", methods=["GET", "POST"])
 def index():
     result = None
+
     if request.method == "POST":
-        url = request.form.get("url","").strip()
+        url = request.form.get("url", "").strip()
         if url:
             result = predict_phishing(url)
 
@@ -248,5 +232,29 @@ def index():
         recent_scans=get_recent_scans()
     )
 
+@app.route("/total-scans")
+def total_scans():
+    with open("logs/scan_history.csv", newline="", encoding="utf-8") as f:
+        scans = list(csv.DictReader(f))
+    return render_template("total_scans.html", scans=scans)
+
+@app.route("/phishing")
+def phishing():
+    with open("logs/phishing_urls.csv", newline="", encoding="utf-8") as f:
+        scans = list(csv.DictReader(f))
+    return render_template("phishing.html", scans=scans)
+
+@app.route("/legitimate")
+def legitimate():
+    with open("logs/legit_urls.csv", newline="", encoding="utf-8") as f:
+        scans = list(csv.DictReader(f))
+    return render_template("legitimate.html", scans=scans)
+
+@app.route("/suspicious")
+def suspicious():
+    with open("logs/uncertain_predictions.csv", newline="", encoding="utf-8") as f:
+        scans = list(csv.DictReader(f))
+    return render_template("suspicious.html", scans=scans)
+# ================== Run ==================
 if __name__ == "__main__":
     app.run(debug=True)

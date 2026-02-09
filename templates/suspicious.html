@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Phishing Scans</title>
+<title>Suspicious Scans</title>
 
 <style>
 body{
@@ -11,9 +11,11 @@ body{
     color:#e5e7eb;
     font-family: Inter, Segoe UI, sans-serif;
 }
+
 .container{ padding:24px; }
 h2{ margin-bottom:16px; }
 
+/* Back link */
 .back{
     display:inline-block;
     margin-bottom:14px;
@@ -22,6 +24,7 @@ h2{ margin-bottom:16px; }
 }
 .back:hover{ text-decoration:underline; }
 
+/* Table */
 table{
     width:100%;
     border-collapse:collapse;
@@ -38,30 +41,33 @@ th, td{
     text-align:left;
 }
 tr:hover{
-    background:rgba(239,68,68,0.08);
+    background:rgba(250,204,21,0.08);
 }
 
-.phishing{
-    color:#ef4444;
+/* Status */
+.suspicious{
+    color:#facc15;
     font-weight:600;
 }
 
+/* URL */
 .url-cell{
     max-width:420px;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
-    color:#fa2004;
+    color:#f6c177;
 }
 
+/* Risk badge */
 .risk{
     padding:4px 10px;
     border-radius:999px;
     font-size:12px;
     font-weight:600;
-    color:#fecaca;
-    background:rgba(239,68,68,0.15);
-    border:1px solid rgba(239,68,68,0.35);
+    color:#f6c177;
+    background:rgba(250,204,21,0.15);
+    border:1px solid rgba(250,204,21,0.35);
 }
 </style>
 </head>
@@ -70,7 +76,8 @@ tr:hover{
 <div class="container">
 
     <a href="/" class="back">← Back to Dashboard</a>
-    <h2>🚨 Phishing URLs Detected</h2>
+
+    <h2>😕 Suspicious URLs</h2>
 
     <table>
         <thead>
@@ -88,16 +95,22 @@ tr:hover{
             {% for s in scans %}
             <tr>
                 <td>{{ s.timestamp }}</td>
-                <td class="url-cell" title="{{ s.url }}">{{ s.url }}</td>
-                <td class="phishing">Phishing</td>
+
+                <td class="url-cell" title="{{ s.url }}">
+                    {{ s.url }}
+                </td>
+
+                <td class="suspicious">Suspicious</td>
+
                 <td>{{ s.probability }}%</td>
-                <td><span class="risk">High</span></td>
+
+                <td><span class="risk">Medium</span></td>
             </tr>
             {% endfor %}
         {% else %}
             <tr>
                 <td colspan="5" style="text-align:center; opacity:0.6;">
-                    No phishing URLs found.
+                    No suspicious URLs recorded yet.
                 </td>
             </tr>
         {% endif %}
@@ -107,4 +120,4 @@ tr:hover{
 
 </div>
 </body>
-</html>
+</html>     

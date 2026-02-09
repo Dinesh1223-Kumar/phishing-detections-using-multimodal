@@ -624,7 +624,8 @@ body::-webkit-scrollbar-thumb:hover{ background: rgba(71,85,105,0.9); }
                 <div class="hint">All URLs analyzed so far</div>
             </div>
             </a>
-
+            
+            <a href="{{ url_for('phishing') }}" style="text-decoration:none;"> 
             <div class="kpi">
                 <div class="top">
                     <div class="label">Phishing</div>
@@ -633,7 +634,9 @@ body::-webkit-scrollbar-thumb:hover{ background: rgba(71,85,105,0.9); }
                 <div class="value">{{ stats.phishing }}</div>
                 <div class="hint">Detected malicious patterns</div>
             </div>
-
+            </a> 
+             
+            <a href="{{ url_for('legitimate') }}" style="text-decoration:none;"> 
             <div class="kpi">
                 <div class="top">
                     <div class="label">Legitimate</div>
@@ -642,7 +645,9 @@ body::-webkit-scrollbar-thumb:hover{ background: rgba(71,85,105,0.9); }
                 <div class="value">{{ stats.legit }}</div>
                 <div class="hint">Trusted / clean signals</div>
             </div>
+            </a>
 
+            <a href="{{ url_for('suspicious') }}" style="text-decoration:none;">
             <div class="kpi">
                 <div class="top">
                     <div class="label">Suspicious</div>
@@ -651,6 +656,7 @@ body::-webkit-scrollbar-thumb:hover{ background: rgba(71,85,105,0.9); }
                 <div class="value">{{ stats.suspicious }}</div>
                 <div class="hint">Needs manual review</div>
             </div>
+            </a>
         </section>
 
         <section class="content">
