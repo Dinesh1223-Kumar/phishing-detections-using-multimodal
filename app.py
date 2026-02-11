@@ -112,42 +112,72 @@ def get_recent_scans(limit=4):
     } for r in reversed(rows)]
 
 # ================== Domain intelligence ==================
+from urllib.parse import urlparse
+
 def get_domain_intelligence(url):
+
     data = {
-        "domain_age": "—",
-        "ssl_status": "—",
-        "country": "—",
-        "registrar": "—"
+        "domain_age": "Unknown",
+        "ssl_status": "Unknown",
+        "country": "Unknown",
+        "registrar": "Unknown"
     }
 
     try:
-        ext = tldextract.extract(url)
-        domain = f"{ext.domain}.{ext.suffix}"
+        # Ensure scheme
+        if not url.startswith(("http://", "https://")):
+            url = "http://" + url
 
+        parsed = urlparse(url)
+        domain = parsed.netloc
+
+        # Remove www
+        if domain.startswith("www."):
+            domain = domain[4:]
+
+        # ================= SSL CHECK =================
+        if url.startswith("https"):
+            data["ssl_status"] = "Valid (HTTPS)"
+        else:
+            data["ssl_status"] = "No HTTPS"
+
+        # ================= WHOIS CHECK =================
         try:
-            context = ssl.create_default_context()
-            with context.wrap_socket(socket.socket(), server_hostname=domain) as s:
-                s.settimeout(3)
-                s.connect((domain, 443))
-                data["ssl_status"] = "Valid"
-        except:
-            data["ssl_status"] = "Invalid / None"
+            w = whois.whois(domain)
 
-        w = whois.whois(domain)
-        if w.creation_date:
-            created = w.creation_date[0] if isinstance(w.creation_date, list) else w.creation_date
-            data["domain_age"] = (datetime.now() - created).days
+            # Domain age
+            if w.creation_date:
+                created = w.creation_date
+                if isinstance(created, list):
+                    created = created[0]
 
-        data["registrar"] = w.registrar or "Unknown"
-        data["country"] = w.country or "Unknown"
+                age_days = (datetime.now() - created).days
+                data["domain_age"] = age_days
 
-    except:
-        pass
+            # Registrar
+            if w.registrar:
+                data["registrar"] = w.registrar
+
+            # Country
+            if w.country:
+                data["country"] = w.country
+
+        except Exception as e:
+            print("WHOIS error:", e)
+
+    except Exception as e:
+        print("Domain Intelligence Error:", e)
 
     return data
 
+
 # ================== Prediction ==================
 def predict_phishing(url):
+
+     # ✅ Ensure URL has scheme
+    if not url.startswith(("http://", "https://")):
+        url = "http://" + url
+
     raw_scores = {}
 
     uf = extract_url_features(url)
