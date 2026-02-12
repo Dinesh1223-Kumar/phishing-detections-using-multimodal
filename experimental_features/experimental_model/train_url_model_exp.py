@@ -72,6 +72,6 @@ print("Accuracy:", accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred))
 
 # Save
-joblib.dump(model, "models/url_model.pkl")
+joblib.dump(model, "experimental_features/experimental_model/url_model_exp.pkl")
 
 print("URL Model trained and saved successfully!")
