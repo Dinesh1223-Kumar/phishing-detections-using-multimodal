@@ -1,26 +1,45 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import joblib
+import numpy as np
 
 from features.url_features import extract_url_features
 
-# Step 1: Load the dataset
+# Load dataset
 data = pd.read_csv("data/url_dataset.csv")
 
-# Step 2: Convert URLs into numbers (features)
+print("Original size:", len(data))
+
+# Remove rows where label is NaN
+data = data.dropna(subset=["label"])
+
+# Remove empty string labels
+data = data[data["label"] != ""]
+
+# Convert label to numeric (force conversion)
+data["label"] = pd.to_numeric(data["label"], errors="coerce")
+
+# Drop rows that failed conversion
+data = data.dropna(subset=["label"])
+
+# Convert to int
+data["label"] = data["label"].astype(int)
+
+print("Cleaned size:", len(data))
+print("Unique labels:", data["label"].unique())
+
+# Extract features
 X = []
 for url in data["url"]:
-    features = extract_url_features(url)
-    X.append(list(features.values()))
+    X.append(list(extract_url_features(url).values()))
 
-# Step 3: Labels (answers)
 y = data["label"]
 
-# Step 4: Train the model
+# Train model
 model = RandomForestClassifier(random_state=42)
 model.fit(X, y)
 
-# Step 5: Save the trained model
+# Save
 joblib.dump(model, "models/url_model.pkl")
 
 print("URL model trained and saved successfully")
