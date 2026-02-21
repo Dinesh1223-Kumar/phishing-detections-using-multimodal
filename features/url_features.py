@@ -21,3 +21,4 @@ def extract_url_features(url):
     features['is_ip_address'] = 1 if re.search(r'\d+\.\d+\.\d+\.\d+', url) else 0
 
     return features
+

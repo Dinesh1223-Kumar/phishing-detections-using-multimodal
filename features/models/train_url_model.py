@@ -1,45 +1,53 @@
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
 import joblib
+import pandas as pd
 import numpy as np
-
 from features.url_features import extract_url_features
 
-# Load dataset
-data = pd.read_csv("data/url_dataset.csv")
+# ==============================
+# Load Trained URL Model
+# ==============================
 
-print("Original size:", len(data))
+try:
+    model = joblib.load("models/url_model.pkl")
+    print("✅ URL model loaded successfully")
+except Exception as e:
+    print("❌ Error loading model:", e)
+    exit()
 
-# Remove rows where label is NaN
-data = data.dropna(subset=["label"])
+# ==============================
+# Test URL (Change if needed)
+# ==============================
 
-# Remove empty string labels
-data = data[data["label"] != ""]
+url = "https://github.com"   # You can modify this
+print(f"\n🌐 Testing URL: {url}")
 
-# Convert label to numeric (force conversion)
-data["label"] = pd.to_numeric(data["label"], errors="coerce")
+# ==============================
+# Extract URL Features
+# ==============================
 
-# Drop rows that failed conversion
-data = data.dropna(subset=["label"])
+try:
+    features = extract_url_features(url)
+    df = pd.DataFrame([features])
 
-# Convert to int
-data["label"] = data["label"].astype(int)
+    print("\n🧠 Extracted URL Features:")
+    print(df)
 
-print("Cleaned size:", len(data))
-print("Unique labels:", data["label"].unique())
+except Exception as e:
+    print("❌ Feature extraction failed:", e)
+    exit()
 
-# Extract features
-X = []
-for url in data["url"]:
-    X.append(list(extract_url_features(url).values()))
+# ==============================
+# Predict Using Model
+# ==============================
 
-y = data["label"]
+try:
+    # Convert to numpy array to avoid sklearn feature-name warning
+    prediction = model.predict(np.array(df.values))[0]
 
-# Train model
-model = RandomForestClassifier(random_state=42)
-model.fit(X, y)
+    if prediction == 1:
+        print("\n🚨 RESULT: PHISHING WEBSITE")
+    else:
+        print("\n✅ RESULT: LEGITIMATE WEBSITE")
 
-# Save
-joblib.dump(model, "models/url_model.pkl")
-
-print("URL model trained and saved successfully")
+except Exception as e:
+    print("❌ Prediction failed:", e)
