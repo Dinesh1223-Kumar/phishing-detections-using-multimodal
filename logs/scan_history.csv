@@ -77,3 +77,5 @@ timestamp,url,label,probability,risk
 2026-02-12 10:12:02,http://restore-update-security-eowqttuemcjn.info,Phishing,100.0,HIGH
 2026-02-12 10:19:07,http://restore-update-security-eowqttuemcjn.info,Phishing,100.0,HIGH
 2026-02-23 10:45:43,http://identity-action-billing-qyxudy.biz,Phishing,100.0,HIGH
+2026-03-01 01:27:12,https://chatgpt.com/g/g-p-6953dcb80e5881918f5cd2ba0e91bbb4-phishing-website-detection/c/69929862-4bbc-8323-aff3-bfe40d2913ef,Legitimate,27.14,LOW
+2026-03-01 01:27:43,https://www.youtube.com/,Legitimate,26.28,LOW

@@ -1,9 +1,16 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+from PIL import Image
+import numpy as np
+import tensorflow as tf
 from flask import Flask, render_template, request
-import joblib, os, csv, socket, ssl
+import joblib, os, csv
 from datetime import datetime
 import requests
 import whois
-import tldextract
+from urllib.parse import urlparse
 
 from features.url_features import extract_url_features
 from features.html_features import extract_html_features
@@ -12,9 +19,9 @@ from features.behavioral_features import extract_behavioral_features
 from features.text_extractor import extract_visible_text
 from features.text_preprocessing import clean_text
 
-app = Flask(__name__)
+# ================== Load Models ==================
+cnn_model = tf.keras.models.load_model("phishing_cnn_model.keras")
 
-# ================== Load models ==================
 url_model = joblib.load("models/url_model.pkl")
 html_model = joblib.load("models/html_model.pkl")
 network_model = joblib.load("models/network_model.pkl")
@@ -22,7 +29,9 @@ text_model = joblib.load("models/text_model.pkl")
 text_vectorizer = joblib.load("models/text_vectorizer.pkl")
 behavioral_model = joblib.load("models/behavioral_model.pkl")
 
-# ================== Feature Order ==================
+app = Flask(__name__)
+
+# ================== Feature Orders ==================
 URL_FEATURE_ORDER = [
     "url_length","count_dots","count_hyphen","has_at_symbol",
     "has_https","has_login_word","subdomain_count","is_ip_address"
@@ -44,9 +53,48 @@ BEHAVIOR_FEATURE_ORDER = [
     "form_action_external"
 ]
 
-# ================== Ensure logs ==================
+# ================== Screenshot ==================
+def capture_screenshot(url):
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--window-size=1280,1024")
+    options.add_argument("--disable-gpu")
+
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=options
+    )
+
+    try:
+        driver.get(url)
+        driver.save_screenshot("temp_screenshot.png")
+        driver.quit()
+        return "temp_screenshot.png"
+    except:
+        driver.quit()
+        return None
+
+# ================== CNN ==================
+def predict_visual_phishing(image_path):
+    try:
+        img = Image.open(image_path).convert("RGB").resize((224, 224))
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
+
+        prediction = cnn_model.predict(img_array, verbose=0)[0][0]
+        return float(prediction)
+    except Exception as e:
+        print("CNN Error:", e)
+        return 0.5
+    img_array = np.array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    prediction = cnn_model.predict(img_array)[0][0]
+    return float(prediction)
+
+# ================== Logging ==================
+os.makedirs("logs", exist_ok=True)
+
 def ensure_file(path, headers):
-    os.makedirs("logs", exist_ok=True)
     if not os.path.isfile(path):
         with open(path, "w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(headers)
@@ -54,68 +102,41 @@ def ensure_file(path, headers):
 ensure_file("logs/scan_history.csv",
             ["timestamp","url","label","probability","risk"])
 
-ensure_file("logs/phishing_urls.csv",
-            ["timestamp","url","probability","risk"])
-
-ensure_file("logs/legit_urls.csv",
-            ["timestamp","url","probability"])
-
-ensure_file("logs/uncertain_predictions.csv",
-            ["timestamp","url","probability"])
-
-# ================== Logging ==================
 def log_scan(url, label, probability, risk):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     with open("logs/scan_history.csv","a",newline="",encoding="utf-8") as f:
         csv.writer(f).writerow([now,url,label,probability,risk])
 
-    if label == "Phishing":
-        with open("logs/phishing_urls.csv","a",newline="",encoding="utf-8") as f:
-            csv.writer(f).writerow([now,url,probability,risk])
+def load_stats():
+    stats = {"total":0,"phishing":0,"legit":0,"suspicious":0}
+    recent = []
 
-    elif label == "Legitimate":
-        with open("logs/legit_urls.csv","a",newline="",encoding="utf-8") as f:
-            csv.writer(f).writerow([now,url,probability])
+    try:
+        with open("logs/scan_history.csv","r",encoding="utf-8") as f:
+            reader = list(csv.DictReader(f))
+            stats["total"] = len(reader)
 
-    else:
-        with open("logs/uncertain_predictions.csv","a",newline="",encoding="utf-8") as f:
-            csv.writer(f).writerow([now,url,probability])
+            for row in reader:
+                if row["label"] == "Phishing":
+                    stats["phishing"] += 1
+                elif row["label"] == "Legitimate":
+                    stats["legit"] += 1
+                elif row["label"] == "Suspicious":
+                    stats["suspicious"] += 1
 
-# ================== Dashboard helpers ==================
-def count_rows(path):
-    if not os.path.isfile(path):
-        return 0
-    with open(path, newline="", encoding="utf-8") as f:
-        return max(0, sum(1 for _ in f) - 1)
+            for row in reader[-5:][::-1]:
+                recent.append({
+                    "url": row["url"],
+                    "label": row["label"],
+                    "date": row["timestamp"]
+                })
+    except:
+        pass
 
-def get_dashboard_stats():
-    return {
-        "total": count_rows("logs/scan_history.csv"),
-        "phishing": count_rows("logs/phishing_urls.csv"),
-        "legit": count_rows("logs/legit_urls.csv"),
-        "suspicious": count_rows("logs/uncertain_predictions.csv")
-    }
+    return stats, recent
 
-def get_recent_scans(limit=4):
-    path = "logs/scan_history.csv"
-    if not os.path.isfile(path):
-        return []
-
-    with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))[-limit:]
-
-    return [{
-        "url": r["url"],
-        "label": r["label"],
-        "date": r["timestamp"]
-    } for r in reversed(rows)]
-
-# ================== Domain intelligence ==================
-from urllib.parse import urlparse
-
+# ================== Domain Intelligence ==================
 def get_domain_intelligence(url):
-
     data = {
         "domain_age": "Unknown",
         "ssl_status": "Unknown",
@@ -124,58 +145,37 @@ def get_domain_intelligence(url):
     }
 
     try:
-        # Ensure scheme
-        if not url.startswith(("http://", "https://")):
+        if not url.startswith(("http://","https://")):
             url = "http://" + url
 
         parsed = urlparse(url)
-        domain = parsed.netloc
+        domain = parsed.netloc.replace("www.","")
 
-        # Remove www
-        if domain.startswith("www."):
-            domain = domain[4:]
+        data["ssl_status"] = "Valid (HTTPS)" if url.startswith("https") else "No HTTPS"
 
-        # ================= SSL CHECK =================
-        if url.startswith("https"):
-            data["ssl_status"] = "Valid (HTTPS)"
-        else:
-            data["ssl_status"] = "No HTTPS"
-
-        # ================= WHOIS CHECK =================
         try:
             w = whois.whois(domain)
-
-            # Domain age
             if w.creation_date:
                 created = w.creation_date
                 if isinstance(created, list):
                     created = created[0]
+                data["domain_age"] = (datetime.now() - created).days
 
-                age_days = (datetime.now() - created).days
-                data["domain_age"] = age_days
-
-            # Registrar
             if w.registrar:
                 data["registrar"] = w.registrar
-
-            # Country
             if w.country:
                 data["country"] = w.country
-
-        except Exception as e:
-            print("WHOIS error:", e)
-
-    except Exception as e:
-        print("Domain Intelligence Error:", e)
+        except:
+            pass
+    except:
+        pass
 
     return data
-
 
 # ================== Prediction ==================
 def predict_phishing(url):
 
-     # ✅ Ensure URL has scheme
-    if not url.startswith(("http://", "https://")):
+    if not url.startswith(("http://","https://")):
         url = "http://" + url
 
     raw_scores = {}
@@ -214,77 +214,80 @@ def predict_phishing(url):
             [[bf[f] for f in BEHAVIOR_FEATURE_ORDER]]
         )[0][1]
 
-    weights = {"URL":0.25,"Network":0.25,"HTML":0.2,"NLP":0.15,"Behavioral":0.15}
-    final = sum(raw_scores[k]*weights[k] for k in raw_scores) / sum(weights[k] for k in raw_scores)
-    probability = round(final * 100, 2)
+    screenshot_path = capture_screenshot(url)
+    raw_scores["Visual"] = predict_visual_phishing(screenshot_path) if screenshot_path else 0.5
+
+    weights = {
+        "URL":0.2,"Network":0.2,"HTML":0.15,
+        "NLP":0.15,"Behavioral":0.15,"Visual":0.15
+    }
+
+    final = sum(raw_scores[k]*weights[k] for k in raw_scores) / \
+            sum(weights[k] for k in raw_scores)
+
+    probability = round(final*100,2)
 
     if probability >= 80:
-        label, risk = "Phishing", "HIGH"
+        label,risk = "Phishing","HIGH"
     elif probability >= 50:
-        label, risk = "Suspicious", "MEDIUM"
+        label,risk = "Suspicious","MEDIUM"
     else:
-        label, risk = "Legitimate", "LOW"
+        label,risk = "Legitimate","LOW"
+
+    log_scan(url,label,probability,risk)
 
     analysis_scores = {
-        "URL Analysis": int(raw_scores.get("URL", 0) * 100),
-        "Network Reputation": int(raw_scores.get("Network", 0) * 100),
-        "HTML Structure": int(raw_scores.get("HTML", 0) * 100),
-        "Language Analysis": int(raw_scores.get("NLP", 0) * 100),
-        "Behavioral Signals": int(raw_scores.get("Behavioral", 0) * 100)
+        "URL Analysis": int(raw_scores.get("URL",0)*100),
+        "Network Reputation": int(raw_scores.get("Network",0)*100),
+        "HTML Structure": int(raw_scores.get("HTML",0)*100),
+        "Language Analysis": int(raw_scores.get("NLP",0)*100),
+        "Behavioral Signals": int(raw_scores.get("Behavioral",0)*100),
+        "Visual Analysis": int(raw_scores.get("Visual",0)*100)
     }
-
-    domain_info = get_domain_intelligence(url)
-    log_scan(url, label, probability, risk)
 
     return {
-        "final_label": label,
-        "risk_level": risk,
-        "probability": probability,
-        "analysis_scores": analysis_scores,
-        **domain_info
+        "final_label":label,
+        "risk_level":risk,
+        "probability":probability,
+        "analysis_scores":analysis_scores,
+        **get_domain_intelligence(url)
     }
 
-# ================== ROUTES ==================
-
-@app.route("/", methods=["GET", "POST"])
+# ================== Routes ==================
+@app.route("/",methods=["GET","POST"])
 def index():
-    result = None
-
-    if request.method == "POST":
-        url = request.form.get("url", "").strip()
+    result=None
+    if request.method=="POST":
+        url=request.form.get("url","").strip()
         if url:
-            result = predict_phishing(url)
+            result=predict_phishing(url)
 
-    return render_template(
-        "index.html",
-        result=result,
-        stats=get_dashboard_stats(),
-        recent_scans=get_recent_scans()
-    )
+    stats,recent_scans=load_stats()
+    return render_template("index.html",
+                           result=result,
+                           stats=stats,
+                           recent_scans=recent_scans)
 
-@app.route("/total-scans")
+@app.route("/total_scans")
 def total_scans():
-    with open("logs/scan_history.csv", newline="", encoding="utf-8") as f:
-        scans = list(csv.DictReader(f))
-    return render_template("total_scans.html", scans=scans)
+    stats,_=load_stats()
+    return f"Total Scans: {stats['total']}"
 
 @app.route("/phishing")
 def phishing():
-    with open("logs/phishing_urls.csv", newline="", encoding="utf-8") as f:
-        scans = list(csv.DictReader(f))
-    return render_template("phishing.html", scans=scans)
+    stats,_=load_stats()
+    return f"Phishing URLs: {stats['phishing']}"
 
 @app.route("/legitimate")
 def legitimate():
-    with open("logs/legit_urls.csv", newline="", encoding="utf-8") as f:
-        scans = list(csv.DictReader(f))
-    return render_template("legitimate.html", scans=scans)
+    stats,_=load_stats()
+    return f"Legitimate URLs: {stats['legit']}"
 
 @app.route("/suspicious")
 def suspicious():
-    with open("logs/uncertain_predictions.csv", newline="", encoding="utf-8") as f:
-        scans = list(csv.DictReader(f))
-    return render_template("suspicious.html", scans=scans)
+    stats,_=load_stats()
+    return f"Suspicious URLs: {stats['suspicious']}"
+
 # ================== Run ==================
-if __name__ == "__main__":
+if __name__=="__main__":
     app.run(debug=True)

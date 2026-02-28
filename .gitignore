@@ -4,3 +4,7 @@ __pycache__/
 .env
 models/*.pkl
 
+*.h5
+*.keras
+venv/
+__pycache__/
